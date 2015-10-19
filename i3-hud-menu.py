@@ -112,20 +112,17 @@ def try_gtk_interface(gtk_bus_name_cmd, gtk_object_path_cmd):
     if menu_id in gtk_menubar_menus:
       for menu in gtk_menubar_menus[menu_id]:
         if 'label' in menu:
-          menu_label = menu['label'].replace('_', '')
-        else:
-          menu_label = '?'
+          menu_label = menu['label']
+          new_label_list = label_list + [menu_label]
+          formatted_label = format_label_list(new_label_list)
 
-        new_label_list = label_list + [menu_label]
-        formatted_label = format_label_list(new_label_list)
-
-        if 'action' in menu:
-          menu_action = menu['action']
-          if ':section' not in menu and ':submenu' not in menu:
-            gtk_menubar_action_dict[formatted_label] = menu_action
-          # if 'target' in menu:
-           # menu_target = menu['target']
-           # gtk_menubar_target_dict[formatted_label] = menu_target
+          if 'action' in menu:
+            menu_action = menu['action']
+            if ':section' not in menu and ':submenu' not in menu:
+              gtk_menubar_action_dict[formatted_label] = menu_action
+            # if 'target' in menu:
+             # menu_target = menu['target']
+             # gtk_menubar_target_dict[formatted_label] = menu_target
 
         if ':section' in menu:
           menu_section = menu[':section']
