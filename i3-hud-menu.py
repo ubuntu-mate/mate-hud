@@ -80,7 +80,7 @@ def try_appmenu_interface(window_id):
   # --- Use dmenu result
   if dmenu_result in dbusmenu_item_dict:
     action = dbusmenu_item_dict[dmenu_result]
-    # print(dbusmenu_object_iface.Event(action, 'clicked', 0, 0))
+    dbusmenu_object_iface.Event(action, 'clicked', 0, 0)
 
 
 """
