@@ -33,21 +33,24 @@ possible actions and asks the user which one to run.
   * `mate-hud-service.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
-    export APPMENU_DISPLAY_BOTH=1
-    if [ -n "$GTK_MODULES" ]
-    then
-      GTK_MODULES="$GTK_MODULES:unity-gtk-module"
-    else
-      GTK_MODULES="unity-gtk-module"
-    fi
-    
-    if [ -z "$UBUNTU_MENUPROXY" ]
-    then
-      UBUNTU_MENUPROXY=1
-    fi 
+```
+if [ -n "$GTK_MODULES" ]; then
+    GTK_MODULES="$GTK_MODULES:unity-gtk-module"
+else
+    GTK_MODULES="unity-gtk-module"
+fi
 
-    export GTK_MODULES
-    export UBUNTU_MENUPROXY
+export GTK_MODULES
+export UBUNTU_MENUPROXY=1
+export APPMENU_DISPLAY_BOTH=1
+```
+
+### Known Issues
+
+In order to remain compatible with `topmenu-gtk-module`, the
+`unity-gtk-module` must be referenced before it. For example:
+
+    GTK_MODULES="canberra-gtk-module:unity-gtk-module:topmenu-gtk-module"
 
 ## Dependencies
 
@@ -64,9 +67,3 @@ possible actions and asks the user which one to run.
   * **[ DONE ]** Replace `xprop` with Python implementation.
   * Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
     * Automatically theme `rofi` based on the currently selected theme.
-
-## Known Issues
-
-Only compatible with `topmenu-gtk-module` if `unity-gtk-module` is referenced before it.
-
-    GTK_MODULES="canberra-gtk-module:unity-gtk-module:topmenu-gtk-module"
