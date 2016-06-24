@@ -19,18 +19,18 @@ menus.
 
 ### Implementation
 
-`i3-appmenu-service.py` is an implementation of the
+`mate-hud-service.py` is an implementation of the
 `com.canonical.AppMenu.Registrar` DBus service. Applications exporting
-their menu via `dbusmenu` need this service to run. `i3-hud-menu.py`
+their menu via `dbusmenu` need this service to run. `mate-hud.py`
 tries to get the menu of the currently focused X11 window, lists
 possible actions and asks the user which one to run.
 
-`i3-hud-menu.py`, should be bound to a keyboard shortcut such as `Ctrl
+`mate-hud.py`, should be bound to a keyboard shortcut such as `Ctrl
 + Alt + Space` or perhaps a panel icon.
 
 ## Setup
 
-  * `i3-appmenu-service.py` should be started on session start-up.
+  * `mate-hud-service.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
     export APPMENU_DISPLAY_BOTH=1
