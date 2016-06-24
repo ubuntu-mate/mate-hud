@@ -57,3 +57,9 @@ possible actions and asks the user which one to run.
   * `python3-dbus`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
+  * `x11-utils` (for `xprop`)
+
+## TODO
+
+  * Replace `xprop` with Python implementation.
+  * Replace `dmenu` with GTK3+ implementation.
