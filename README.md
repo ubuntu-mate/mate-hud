@@ -67,4 +67,6 @@ possible actions and asks the user which one to run.
 
 ## Known Issues
 
-  * May not be compatible to `topmenu-gtk`.
+Only compatible with `topmenu-gtk-module` if `unity-gtk-module` is referenced before it.
+
+    GTK_MODULES="canberra-gtk-module:unity-gtk-module:topmenu-gtk-module"
