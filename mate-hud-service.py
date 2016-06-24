@@ -29,8 +29,8 @@ class i3AppmenuService(dbus.service.Object):
   def Q(self):
     Gtk.main_quit()
 
-DBusGMainLoop(set_as_default=True)
-myservice = i3AppmenuService()
-Gtk.main()
-
-# GTK apps : get dbus service (xprop)
+if __name__ == "__main__":
+  DBusGMainLoop(set_as_default=True)
+  myservice = i3AppmenuService()
+  Gtk.main()
+  # GTK apps : get dbus service (xprop)

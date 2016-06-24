@@ -157,25 +157,21 @@ def try_gtk_interface(gtk_bus_name_cmd, gtk_object_path_cmd):
     # print('GTK Action :', action)
     gtk_action_object_actions_iface.Activate(action.replace('unity.', ''), [], dict())
 
-"""
-  main
-"""
+if __name__ == "__main__":
+  # --- Get X Window ID ---
+  window_id_cmd = subprocess.check_output(['xprop', '-root', '-notype', '_NET_ACTIVE_WINDOW']).decode('utf-8')
+  window_id = window_id_cmd.split(' ')[4].split(',')[0].split('\n')[0]
 
-# --- Get X Window ID ---
-window_id_cmd = subprocess.check_output(['xprop', '-root', '-notype', '_NET_ACTIVE_WINDOW']).decode('utf-8')
-window_id = window_id_cmd.split(' ')[4].split(',')[0].split('\n')[0]
+  # For testing get the id of the target window from xwininfo
+  # window_id = '0x3400186'
+  # print('Window id is :', window_id)
 
-# For testing get the id of the target window from xwininfo
-# window_id = '0x3400186'
-# print('Window id is :', window_id)
+  # --- Get GTK MenuModel Bus name ---
+  gtk_bus_name_cmd = subprocess.check_output(['xprop', '-id', window_id, '-notype', '_GTK_UNIQUE_BUS_NAME']).decode('utf-8')
+  gtk_object_path_cmd = subprocess.check_output(['xprop', '-id', window_id, '-notype', '_GTK_MENUBAR_OBJECT_PATH']).decode('utf-8')
+  # print(gtk_bus_name_cmd)
 
-# --- Get GTK MenuModel Bus name ---
-gtk_bus_name_cmd = subprocess.check_output(['xprop', '-id', window_id, '-notype', '_GTK_UNIQUE_BUS_NAME']).decode('utf-8')
-gtk_object_path_cmd = subprocess.check_output(['xprop', '-id', window_id, '-notype', '_GTK_MENUBAR_OBJECT_PATH']).decode('utf-8')
-
-# print(gtk_bus_name_cmd)
-
-if gtk_bus_name_cmd == '_GTK_UNIQUE_BUS_NAME:  not found.\n' or gtk_object_path_cmd == '_GTK_MENUBAR_OBJECT_PATH:  not found.\n':
-  try_appmenu_interface(int(window_id, 16))
-else:
-  try_gtk_interface(gtk_bus_name_cmd, gtk_object_path_cmd)
+  if gtk_bus_name_cmd == '_GTK_UNIQUE_BUS_NAME:  not found.\n' or gtk_object_path_cmd == '_GTK_MENUBAR_OBJECT_PATH:  not found.\n':
+    try_appmenu_interface(int(window_id, 16))
+  else:
+    try_gtk_interface(gtk_bus_name_cmd, gtk_object_path_cmd)
