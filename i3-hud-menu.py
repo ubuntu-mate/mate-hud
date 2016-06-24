@@ -38,7 +38,7 @@ def try_appmenu_interface(window_id):
   dbusmenu_item_dict = dict()
 
   #For excluding items which have no action
-  blacklist = [] 
+  blacklist = []
 
   """ explore_dbusmenu_item """
   def explore_dbusmenu_item(item, label_list):
@@ -146,7 +146,7 @@ def try_gtk_interface(gtk_bus_name_cmd, gtk_object_path_cmd):
     dmenu_string += '\n'
     dmenu_string += m
 
-  dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '15'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+  dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '15', '-fn', '"Ubuntu Regular-10.5"', '-nb', '#33322f', '-nf', '#cccccc', '-sf', '#cccccc', '-sb', '#87a752'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
   dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
   dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
   dmenu_cmd.stdin.close()
