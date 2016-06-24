@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
-from gi.repository import Gtk
+import gi
+gi.require_version("Gtk", "3.0")
+
 import dbus
 import dbus.service
+from gi.repository import Gtk
 from dbus.mainloop.glib import DBusGMainLoop
 
 class i3AppmenuService(dbus.service.Object):
