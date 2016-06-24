@@ -1,19 +1,39 @@
-i3-hud-menu
-===========
+# mate-hud
 
-Provides a way to run menubar commands through dmenu.
+Provides a way to run menubar commands through `dmenu`, much like the
+Unity 7 Heads-Up Display (HUD). `mate-hud` was originally forked from
+`i3-hud-menu`:
 
-Dependencies
-============
-* python-dbus
-* dmenu
+  * https://jamcnaughton.com/2015/10/19/hud-for-xubuntu/
+  * https://github.com/jamcnaughton/i3-hud-menu
+  * https://github.com/RafaelBocquet/i3-hud-menu
 
-Setup
-============
-1. i3-appmenu-service.py should be started (with python 3+) on the session's startup.
-2. The following should be added to the user's .profile: 
+## What is a HUD and why should I care?
 
-    ```
+A Heads-Up Display (HUD) allows you to search through an application's
+appmenu. So if you’re trying to find that single filter in Gimp but
+can't remember which filter category it fits into or if you can't
+recall if preferences sits under File, Edit or Tools on your favourite
+browser, you can just search for it rather than hunting through the
+menus.
+
+### Implementation
+
+`i3-appmenu-service.py` is an implementation of the
+`com.canonical.AppMenu.Registrar` DBus service. Applications exporting
+their menu via `dbusmenu` need this service to run. `i3-hud-menu.py`
+tries to get the menu of the currently focused X11 window, lists
+possible actions and asks the user which one to run.
+
+`i3-hud-menu.py`, should be bound to a keyboard shortcut such as `Ctrl
++ Alt + Space` or perhaps a panel icon.
+
+## Setup
+
+  * `i3-appmenu-service.py` should be started on session start-up.
+  * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
+
+    export APPMENU_DISPLAY_BOTH=1
     if [ -n "$GTK_MODULES" ]
     then
       GTK_MODULES="$GTK_MODULES:unity-gtk-module"
@@ -25,15 +45,15 @@ Setup
     then
       UBUNTU_MENUPROXY=1
     fi 
-   ```
-    
-3. i3-hud-menu.py should be bound to run (with python 3+) with a shortcut (such as a keyboard shortcut). 
 
-Usage
-============
-The user should active the shortcut when the window they wish to show the application menu entries for has focus.  This will open the dmenu at the top.  The user can then use the keyboard to search and navigate the entries.  Pressing enter will execute the selected entry and pressing escape will close the dmenu without executing anything.
+    export GTK_MODULES
+    export UBUNTU_MENUPROXY
 
-Explanation
-============
-i3-appmenu-service.py  is an implementation of the com.canonical.AppMenu.Registrar DBus service.  Applications exporting their menu through dbusmenu need this service to run.
-i3-hud-menu.py tries to get the menu of the currently focused X11 window, lists possible actions and asks the user which one to run.
+## Dependencies
+
+  * `appmenu-qt`
+  * `dmenu`
+  * `python3`
+  * `python3-dbus`
+  * `unity-gtk2-module`
+  * `unity-gtk3-module`
