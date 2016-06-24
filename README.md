@@ -55,11 +55,16 @@ possible actions and asks the user which one to run.
   * `dmenu`
   * `python3`
   * `python3-dbus`
+  * `python3-xlib`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
-  * `x11-utils` (for `xprop`)
 
 ## TODO
 
-  * Replace `xprop` with Python implementation.
-  * Replace `dmenu` with GTK3+ implementation.
+  * **[ DONE ]** Replace `xprop` with Python implementation.
+  * Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
+    * Automatically theme `rofi` based on the currently selected theme.
+
+## Known Issues
+
+  * May not be compatible to `topmenu-gtk`.
