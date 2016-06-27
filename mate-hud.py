@@ -76,10 +76,8 @@ def format_label_list(label_list):
   head, *tail = label_list
   result = head
   for label in tail:
-    result = result + " > " + label
-  result = result.replace("Root > ", "")
-  result = result.replace("_", "")
-  return result
+    result = result + ' > ' + label
+  return result.replace('Root > ', '').replace('_', '')
 
 """
   try_appmenu_interface
