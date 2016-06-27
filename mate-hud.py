@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+import gi
+gi.require_version("Gtk", "3.0")
+
 import dbus
 import os
 import subprocess
 import time
+from gi.repository import Gtk
 from Xlib import display, X, protocol, Xatom
 
 class EWMH:
@@ -90,8 +94,18 @@ def get_dmenu(dmenuKeys):
     dmenu_string, *menu_items = dmenuKeys
     for menu_item in menu_items:
         dmenu_string += '\n' + menu_item
-
-    dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i', '-location', '1', '-width', '100', '-p', '', '-lines', '16', '-font', 'Ubuntu 12', '-bg', '#33322f', '-fg', '#cccccc', '-hlfg', '#cccccc', '-hlbg', '#87a752', '-separator-style', 'none', '-hide-scrollbar'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+ 
+    dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
+                                  '-location', '1',
+                                  '-width', '100', '-p', '',
+                                  '-lines', '16', '-font', 'Ubuntu 12',
+                                  '-separator-style', 'solid',
+                                  '-hide-scrollbar',
+                                  '-color-enabled',
+                                  '-color-window', "#33322f, #3b3c37, #33322f",
+                                  '-color-normal', "#33322f, #cccccc, #33322f, #87a752, #cccccc",
+                                  '-color-active', "#33322f, #268bd2, #33322f, #268bd2, #cccccc",
+                                  '-color-urgent', "#33322f, #dc322f, #33322f, #dc322f, #cccccc"], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
     dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
     dmenu_cmd.stdin.close()
