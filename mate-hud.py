@@ -2,12 +2,14 @@
 
 import gi
 gi.require_version("Gtk", "3.0")
+gi.require_version('Keybinder', '3.0')
 
 import dbus
 import os
 import subprocess
-from gi.repository import Gio, Gtk
-from Xlib import display, X, protocol, Xatom
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import Keybinder, Gio, GLib, Gtk
+from Xlib import display, protocol, X, Xatom
 
 class EWMH:
     """This class provides the ability to get and set properties defined by the EWMH spec.
@@ -71,6 +73,7 @@ class EWMH:
     def _createWindow(self, wId):
         if not wId: return None
         return self.display.create_resource_object('window', wId)
+
 
 """
   format_label_list
@@ -261,7 +264,10 @@ def try_gtk_interface(gtk_bus_name, gtk_object_path):
       #print('GTK Action :', action)
       gtk_action_object_actions_iface.Activate(action.replace('unity.', ''), [], dict())
 
-if __name__ == "__main__":
+def hud(keystr, user_data):
+    print ("Handling", user_data)
+    print ("Event time:", Keybinder.get_current_event_time())
+
     # Get Window properties and GTK MenuModel Bus name
     ewmh = EWMH()
     win = ewmh.getActiveWindow()
@@ -278,3 +284,14 @@ if __name__ == "__main__":
     else:
         print('Trying GTK interface')
         try_gtk_interface(gtk_bus_name, gtk_object_path)
+
+if __name__ == "__main__":
+    DBusGMainLoop(set_as_default=True)
+    hud_hotkey = "<Ctrl><Alt>space"
+    Keybinder.init()
+    Keybinder.bind(hud_hotkey, hud, "keystring %s (user data)" % hud_hotkey)
+    print ("Press", hud_hotkey, "to handle keybinding and quit")
+    try:
+        GLib.MainLoop().run()
+    except KeyboardInterrupt:
+        GLib.MainLoop().quit()
