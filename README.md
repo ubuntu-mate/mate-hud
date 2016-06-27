@@ -56,10 +56,12 @@ In order to remain compatible with `topmenu-gtk-module`, the
 ## Dependencies
 
   * `appmenu-qt`
-  * `rofi`
+  * `gir1.2-gtk-3.0`
+  * `mate-desktop`
   * `python3`
   * `python3-dbus`
   * `python3-xlib`
+  * `rofi`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
 
@@ -67,5 +69,5 @@ In order to remain compatible with `topmenu-gtk-module`, the
 
   * **[ DONE ]** Replace `xprop` with Python implementation.
   * **[ DONE ]** Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
-  * Automatically theme `rofi` based on the currently selected GTK theme.
+  * **[ DONE ]** Automatically theme `rofi` based on the currently selected GTK theme.
   * Bind to a configurable keybinding.
