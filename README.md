@@ -22,16 +22,15 @@ menus.
 
 `mate-hud-service.py` is an implementation of the
 `com.canonical.AppMenu.Registrar` DBus service. Applications exporting
-their menu via `dbusmenu` need this service to run. `mate-hud.py`
-tries to get the menu of the currently focused X11 window, lists
-possible actions and asks the user which one to run.
-
-`mate-hud.py`, should be bound to a keyboard shortcut such as `Ctrl
-+ Alt + Space` or perhaps a panel icon.
+their menu via `dbusmenu` need this service to run. `mate-hud.py` tries
+to get the menu of the currently focused X11 window, lists possible
+actions and asks the user which one to run. `mate-hud.py`, binds itself
+to the `<Ctrl><Alt>space` keyboard shortcut.
 
 ## Setup
 
   * `mate-hud-service.py` should be started on session start-up.
+  * `mate-hud.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
 ```
@@ -56,6 +55,7 @@ In order to remain compatible with `topmenu-gtk-module`, the
 ## Dependencies
 
   * `appmenu-qt`
+  * `gir1.2-keybinder-3.0`
   * `gir1.2-gtk-3.0`
   * `mate-desktop`
   * `python3`
@@ -70,4 +70,4 @@ In order to remain compatible with `topmenu-gtk-module`, the
   * **[ DONE ]** Replace `xprop` with Python implementation.
   * **[ DONE ]** Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
   * **[ DONE ]** Automatically theme `rofi` based on the currently selected GTK theme.
-  * Bind to a configurable keybinding.
+  * **[ DONE ]** Bind to a configurable keybinding.
