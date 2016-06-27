@@ -89,8 +89,7 @@ def get_dmenu(dmenuKeys):
 
     dmenu_string, *menu_items = dmenuKeys
     for menu_item in menu_items:
-        dmenu_string += '\n'
-        dmenu_string += menu_item
+        dmenu_string += '\n' + menu_item
 
     dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '16', '-fn', '"Ubuntu Regular-12"', '-nb', '#33322f', '-nf', '#cccccc', '-sf', '#cccccc', '-sb', '#87a752'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
