@@ -1,7 +1,8 @@
 # mate-hud
 
-Provides a way to run menubar commands through `dmenu`, much like the
-Unity 7 Heads-Up Display (HUD). `mate-hud` was originally forked from
+Provides a way to run menubar commands through
+[rofi](https://davedavenport.github.io/rofi/), much like the Unity 7
+Heads-Up Display (HUD). `mate-hud` was originally forked from
 `i3-hud-menu`:
 
   * https://jamcnaughton.com/2015/10/19/hud-for-xubuntu/
@@ -11,7 +12,7 @@ Unity 7 Heads-Up Display (HUD). `mate-hud` was originally forked from
 ## What is a HUD and why should I care?
 
 A Heads-Up Display (HUD) allows you to search through an application's
-appmenu. So if you’re trying to find that single filter in Gimp but
+appmenu. So if you're trying to find that single filter in Gimp but
 can't remember which filter category it fits into or if you can't
 recall if preferences sits under File, Edit or Tools on your favourite
 browser, you can just search for it rather than hunting through the
@@ -55,7 +56,7 @@ In order to remain compatible with `topmenu-gtk-module`, the
 ## Dependencies
 
   * `appmenu-qt`
-  * `dmenu`
+  * `rofi`
   * `python3`
   * `python3-dbus`
   * `python3-xlib`
@@ -65,5 +66,6 @@ In order to remain compatible with `topmenu-gtk-module`, the
 ## TODO
 
   * **[ DONE ]** Replace `xprop` with Python implementation.
-  * Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
-    * Automatically theme `rofi` based on the currently selected theme.
+  * **[ DONE ]** Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
+  * Automatically theme `rofi` based on the currently selected GTK theme.
+  * Bind to a configurable keybinding.
