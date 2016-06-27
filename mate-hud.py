@@ -81,6 +81,25 @@ def format_label_list(label_list):
     return result.replace('Root > ', '').replace('_', '')
 
 """
+   generate dmenu of available menu items.
+"""
+def get_dmenu(dmenuKeys):
+    if not dmenuKeys:
+        return ''
+
+    dmenu_string, *menu_items = dmenuKeys
+    for menu_item in menu_items:
+        dmenu_string += '\n'
+        dmenu_string += menu_item
+
+    dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '16', '-fn', '"Ubuntu Regular-12"', '-nb', '#33322f', '-nf', '#cccccc', '-sf', '#cccccc', '-sb', '#87a752'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
+    dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
+    dmenu_cmd.stdin.close()
+
+    return dmenu_result
+
+"""
   try_appmenu_interface
 """
 def try_appmenu_interface(window_id):
@@ -126,23 +145,12 @@ def try_appmenu_interface(window_id):
 
     explore_dbusmenu_item(dbusmenu_items[1], [])
     dmenuKeys = sorted(dbusmenu_item_dict.keys())
-
-    # --- Run dmenu
-    dmenu_string = ''
-    head, *tail = dmenuKeys
-    dmenu_string = head
-    for m in tail:
-        dmenu_string += '\n'
-        dmenu_string += m
-
-    dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '15'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
-    dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
-    dmenu_cmd.stdin.close()
+    dmenu_result = get_dmenu(dmenuKeys)
 
     # --- Use dmenu result
     if dmenu_result in dbusmenu_item_dict:
         action = dbusmenu_item_dict[dmenu_result]
+        #print('AppMenu Action :', action)
         dbusmenu_object_iface.Event(action, 'clicked', 0, 0)
 
 
@@ -195,24 +203,12 @@ def try_gtk_interface(gtk_bus_name, gtk_object_path):
     explore_menu((0,0), [])
 
     dmenuKeys = sorted(gtk_menubar_action_dict.keys())
-
-    # --- Run dmenu
-    dmenu_string = ''
-    head, *tail = dmenuKeys
-    dmenu_string = head
-    for m in tail:
-        dmenu_string += '\n'
-        dmenu_string += m
-
-    dmenu_cmd = subprocess.Popen(['dmenu', '-i', '-l', '15', '-fn', '"Ubuntu Regular-10.5"', '-nb', '#33322f', '-nf', '#cccccc', '-sf', '#cccccc', '-sb', '#87a752'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
-    dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
-    dmenu_cmd.stdin.close()
+    dmenu_result = get_dmenu(dmenuKeys)
 
     # --- Use dmenu result
     if dmenu_result in gtk_menubar_action_dict:
       action = gtk_menubar_action_dict[dmenu_result]
-      # print('GTK Action :', action)
+      #print('GTK Action :', action)
       gtk_action_object_actions_iface.Activate(action.replace('unity.', ''), [], dict())
 
 if __name__ == "__main__":
