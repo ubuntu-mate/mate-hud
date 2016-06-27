@@ -6,8 +6,7 @@ gi.require_version("Gtk", "3.0")
 import dbus
 import os
 import subprocess
-import time
-from gi.repository import Gtk
+from gi.repository import Gio, Gtk
 from Xlib import display, X, protocol, Xatom
 
 class EWMH:
@@ -84,6 +83,15 @@ def format_label_list(label_list):
 
     return result.replace('Root > ', '').replace('_', '')
 
+def rgba_to_hex(color):
+   """
+   Return hexadecimal string for :class:`Gdk.RGBA` `color`.
+   """
+   return "#{0:02x}{1:02x}{2:02x}".format(
+                                    int(color.red   * 255),
+                                    int(color.green * 255),
+                                    int(color.blue  * 255))
+
 """
    generate dmenu of available menu items.
 """
@@ -94,18 +102,47 @@ def get_dmenu(dmenuKeys):
     dmenu_string, *menu_items = dmenuKeys
     for menu_item in menu_items:
         dmenu_string += '\n' + menu_item
- 
+
+    # Get the currently active font
+    settings = Gio.Settings('org.mate.interface')
+    font_name = settings.get_string('font-name')
+    gtk_theme = settings.get_string('gtk-theme')
+
+    # Get some colors from the currently selected theme.
+    # TODO: Use more robust wrapper to validate the requested colors were found.
+    window = Gtk.Window()
+    style_context = window.get_style_context()
+
+    dark_themes = {'Ambiance', 'Ambiant-MATE'}
+
+    if gtk_theme in dark_themes:
+        bg_color = rgba_to_hex(style_context.lookup_color('dark_bg_color')[1])
+        fg_color = rgba_to_hex(style_context.lookup_color('dark_fg_color')[1])
+    else:
+        bg_color = rgba_to_hex(style_context.lookup_color('theme_bg_color')[1])
+        fg_color = rgba_to_hex(style_context.lookup_color('theme_fg_color')[1])
+
+    selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
+    selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
+    error_bg_color = rgba_to_hex(style_context.lookup_color('error_bg_color')[1])
+    error_fg_color = rgba_to_hex(style_context.lookup_color('error_fg_color')[1])
+    info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
+    info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
+    text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
+    borders = rgba_to_hex(style_context.lookup_color('theme_unfocused_fg_color')[1])
+
     dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                   '-location', '1',
                                   '-width', '100', '-p', '',
-                                  '-lines', '16', '-font', 'Ubuntu 12',
+                                  '-lines', '16', '-font', font_name,
                                   '-separator-style', 'solid',
                                   '-hide-scrollbar',
                                   '-color-enabled',
-                                  '-color-window', "#33322f, #3b3c37, #33322f",
-                                  '-color-normal', "#33322f, #cccccc, #33322f, #87a752, #cccccc",
-                                  '-color-active', "#33322f, #268bd2, #33322f, #268bd2, #cccccc",
-                                  '-color-urgent', "#33322f, #dc322f, #33322f, #dc322f, #cccccc"], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+                                  '-color-window', bg_color +", " + borders + ", " + borders,
+                                  '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
+                                  '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
+                                  '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + error_bg_color + ", " + error_fg_color],
+                                  stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
     dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
     dmenu_cmd.stdin.close()
@@ -232,8 +269,8 @@ if __name__ == "__main__":
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     print('Window id is :', window_id)
-    print('_GTK_UNIQUE_BUS_NAME: ' + gtk_bus_name)
-    print('_GTK_MENUBAR_OBJECT_PATH: ' + gtk_object_path)
+    print('_GTK_UNIQUE_BUS_NAME: ', gtk_bus_name)
+    print('_GTK_MENUBAR_OBJECT_PATH: ', gtk_object_path)
 
     if (not gtk_bus_name) or (not gtk_object_path):
         print('Trying AppMenu')
