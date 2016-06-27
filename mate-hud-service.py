@@ -8,7 +8,7 @@ import dbus.service
 from gi.repository import Gtk
 from dbus.mainloop.glib import DBusGMainLoop
 
-class i3AppmenuService(dbus.service.Object):
+class AppmenuService(dbus.service.Object):
     def __init__(self):
         bus_name = dbus.service.BusName('com.canonical.AppMenu.Registrar', bus = dbus.SessionBus())
         dbus.service.Object.__init__(self, bus_name, '/com/canonical/AppMenu/Registrar')
@@ -34,6 +34,6 @@ class i3AppmenuService(dbus.service.Object):
 
 if __name__ == "__main__":
     DBusGMainLoop(set_as_default=True)
-    myservice = i3AppmenuService()
+    mate_hud_service = AppmenuService()
     Gtk.main()
     # GTK apps : get dbus service (xprop)
