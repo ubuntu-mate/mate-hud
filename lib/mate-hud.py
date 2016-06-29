@@ -11,6 +11,8 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Keybinder, Gio, GLib, Gtk
 from Xlib import display, protocol, X, Xatom
 
+__VERSION__ = "16.10.0"
+
 class EWMH:
     """This class provides the ability to get and set properties defined by the EWMH spec.
     It was blanty ripped out of pyewmh
@@ -79,7 +81,9 @@ class EWMH:
   format_label_list
 """
 def format_label_list(label_list):
-    head, *tail = label_list
+    head, tail = label_list
+    #print(head)
+    #print(tail)
     result = head
     for label in tail:
         result = result + ' > ' + label
