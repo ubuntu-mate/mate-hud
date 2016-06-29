@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.mate.hud" path="/org/mate/hud/">
+    <key type="b" name="enabled">
+      <default>false</default>
+      <summary></summary>
+      <description></description>
+    </key>
+    <key type="s" name="shortcut">
+      <default>"<Ctrl><Alt>space"</default>
+      <summary></summary>
+      <description></description>
+    </key>
+  </schema>
+</schemalist>
