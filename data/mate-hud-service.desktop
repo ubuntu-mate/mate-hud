@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=MATE HUD Server
+Exec=/usr/lib/mate-hud/mate-hud-service.py
+NoDisplay=true
+X-MATE-Autostart-Phase=Initialization
+X-MATE-Autostart-Notify=false
+X-MATE-AutoRestart=true

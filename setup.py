@@ -55,6 +55,9 @@ data_files = [
     ("share/man/man1",
         glob("data/*.1")
     ),
+    ("share/mate/autostart",
+        glob("data/*.desktop")
+    ),    
     ("share/glib-2.0/schemas",
         ["data/org.mate.hud.gschema.xml"]
     ),
