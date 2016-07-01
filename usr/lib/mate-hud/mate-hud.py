@@ -89,14 +89,14 @@ def format_label_list(label_list):
 
     return result.replace('Root > ', '').replace('_', '')
 
-def get_bool(self, schema, path, key):
+def get_bool(schema, path, key):
     if path:
         settings = Gio.Settings.new_with_path(schema, path)
     else:
         settings = Gio.Settings.new(schema)
     return settings.get_boolean(key)
 
-def get_string(self, schema, path, key):
+def get_string(schema, path, key):
     if path:
         settings = Gio.Settings.new_with_path(schema, path)
     else:
