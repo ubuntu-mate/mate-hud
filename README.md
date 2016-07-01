@@ -72,6 +72,7 @@ In order to remain compatible with `topmenu-gtk-module`, the
   * `mate-desktop`
   * `python3`
   * `python3-dbus`
+  * `python3-setproctitle`
   * `python3-xlib`
   * `rofi`
   * `unity-gtk2-module`
