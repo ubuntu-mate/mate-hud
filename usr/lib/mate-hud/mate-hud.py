@@ -19,33 +19,33 @@ class EWMH:
     It was blanty ripped out of pyewmh
       * https://github.com/parkouss/pyewmh
     """
-    
+
     NET_WM_WINDOW_TYPES = (
         '_NET_WM_WINDOW_TYPE_DESKTOP', '_NET_WM_WINDOW_TYPE_DOCK', '_NET_WM_WINDOW_TYPE_TOOLBAR', '_NET_WM_WINDOW_TYPE_MENU',
         '_NET_WM_WINDOW_TYPE_UTILITY', '_NET_WM_WINDOW_TYPE_SPLASH', '_NET_WM_WINDOW_TYPE_DIALOG', '_NET_WM_WINDOW_TYPE_DROPDOWN_MENU',
         '_NET_WM_WINDOW_TYPE_POPUP_MENU', '_NET_WM_WINDOW_TYPE_NOTIFICATION', '_NET_WM_WINDOW_TYPE_COMBO', '_NET_WM_WINDOW_TYPE_DND',
         '_NET_WM_WINDOW_TYPE_NORMAL')
     """List of strings representing all known window types."""
-    
+
     NET_WM_ACTIONS = (
         '_NET_WM_ACTION_MOVE', '_NET_WM_ACTION_RESIZE', '_NET_WM_ACTION_MINIMIZE', '_NET_WM_ACTION_SHADE',
         '_NET_WM_ACTION_STICK', '_NET_WM_ACTION_MAXIMIZE_HORZ', '_NET_WM_ACTION_MAXIMIZE_VERT', '_NET_WM_ACTION_FULLSCREEN',
         '_NET_WM_ACTION_CHANGE_DESKTOP', '_NET_WM_ACTION_CLOSE', '_NET_WM_ACTION_ABOVE', '_NET_WM_ACTION_BELOW')
     """List of strings representing all known window actions."""
-    
+
     NET_WM_STATES = (
         '_NET_WM_STATE_MODAL', '_NET_WM_STATE_STICKY', '_NET_WM_STATE_MAXIMIZED_VERT', '_NET_WM_STATE_MAXIMIZED_HORZ',
         '_NET_WM_STATE_SHADED', '_NET_WM_STATE_SKIP_TASKBAR', '_NET_WM_STATE_SKIP_PAGER', '_NET_WM_STATE_HIDDEN',
         '_NET_WM_STATE_FULLSCREEN','_NET_WM_STATE_ABOVE', '_NET_WM_STATE_BELOW', '_NET_WM_STATE_DEMANDS_ATTENTION')
     """List of strings representing all known window states."""
-    
+
     def __init__(self, _display=None, root = None):
         self.display = _display or display.Display()
         self.root = root or self.display.screen().root
-    
+
     def getActiveWindow(self):
         """Get the current active (toplevel) window or None (property _NET_ACTIVE_WINDOW)
-        
+
         :return: Window object or None"""
         active_window = self._getProperty('_NET_ACTIVE_WINDOW')
         if active_window == None:
