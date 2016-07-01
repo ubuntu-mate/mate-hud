@@ -6,6 +6,7 @@ gi.require_version('Keybinder', '3.0')
 
 import dbus
 import os
+import setproctitle
 import subprocess
 import sys
 from dbus.mainloop.glib import DBusGMainLoop
@@ -153,7 +154,7 @@ def get_dmenu(dmenuKeys):
     dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                   '-location', '1',
                                   '-width', '100', '-p', '',
-                                  '-lines', '16', '-font', font_name,
+                                  '-lines', '12', '-font', font_name,
                                   '-separator-style', 'solid',
                                   '-hide-scrollbar',
                                   '-color-enabled',
@@ -301,6 +302,7 @@ def hud(keystr, user_data):
         try_gtk_interface(gtk_bus_name, gtk_object_path)
 
 if __name__ == "__main__":
+    setproctitle.setproctitle('mate-hud')
     # Get the configuration
     enabled = False
     shortcut = '<Ctrl><Alt>space'
@@ -312,6 +314,7 @@ if __name__ == "__main__":
         pass
 
     if enabled:
+        
         DBusGMainLoop(set_as_default=True)
         Keybinder.init()
         Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)

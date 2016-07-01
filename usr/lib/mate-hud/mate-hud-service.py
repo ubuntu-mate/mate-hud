@@ -5,6 +5,7 @@ gi.require_version("Gtk", "3.0")
 
 import dbus
 import dbus.service
+import setproctitle
 from gi.repository import Gtk
 from dbus.mainloop.glib import DBusGMainLoop
 
@@ -33,7 +34,7 @@ class AppmenuService(dbus.service.Object):
         Gtk.main_quit()
 
 if __name__ == "__main__":
+    setproctitle.setproctitle('mate-hud-service')
     DBusGMainLoop(set_as_default=True)
     mate_hud_service = AppmenuService()
     Gtk.main()
-    # GTK apps : get dbus service (xprop)
