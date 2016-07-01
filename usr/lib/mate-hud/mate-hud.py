@@ -13,8 +13,6 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Keybinder, Gio, GLib, Gtk
 from Xlib import display, protocol, X, Xatom
 
-__VERSION__ = "16.10.0"
-
 class EWMH:
     """This class provides the ability to get and set properties defined by the EWMH spec.
     It was blanty ripped out of pyewmh
@@ -311,10 +309,8 @@ if __name__ == "__main__":
         shortcut = get_string('org.mate.hud', None, 'shortcut')
     except:
         print('org.mate.hud gsettings not found. Exitting.')
-        pass
 
     if enabled:
-        
         DBusGMainLoop(set_as_default=True)
         Keybinder.init()
         Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
