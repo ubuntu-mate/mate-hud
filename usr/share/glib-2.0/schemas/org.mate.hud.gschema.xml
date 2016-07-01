@@ -7,7 +7,7 @@
       <description></description>
     </key>
     <key type="s" name="shortcut">
-      <default>"<Ctrl><Alt>space"</default>
+      <default>'&lt;Ctrl&gt;&lt;Alt&gt;space'</default>
       <summary></summary>
       <description></description>
     </key>
