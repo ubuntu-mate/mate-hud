@@ -25,9 +25,21 @@ menus.
 their menu via `dbusmenu` need this service to run. `mate-hud.py` tries
 to get the menu of the currently focused X11 window, lists possible
 actions and asks the user which one to run. `mate-hud.py`, binds itself
-to the `<Ctrl><Alt>space` keyboard shortcut.
+to the `<Ctrl><Alt>space` keyboard shortcut by default.
 
-## Setup
+### Gsettings
+
+`mate-hud.py` reads two gsettings keys:
+
+  * `org.mate.hud`: `enabled`  (Default: False)
+  * `org.mate.hud`: `shortcut` (Default: <Ctrl><Alt>space)
+
+`mate-hud.py` will not execute until those gsettings keys are created,
+which the `mate-hud` Debian package will do, and the `enabled` key
+is set to *True* using something like `dconf-editor`. MATE Tweak
+will soon add the functionality the endable/disable `mate-hud`.
+
+### Manual Setup
 
   * `mate-hud-service.py` should be started on session start-up.
   * `mate-hud.py` should be started on session start-up.
