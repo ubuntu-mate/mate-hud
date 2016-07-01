@@ -7,6 +7,7 @@ gi.require_version('Keybinder', '3.0')
 import dbus
 import os
 import subprocess
+import sys
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Keybinder, Gio, GLib, Gtk
 from Xlib import display, protocol, X, Xatom
@@ -81,14 +82,26 @@ class EWMH:
   format_label_list
 """
 def format_label_list(label_list):
-    head, tail = label_list
-    #print(head)
-    #print(tail)
+    head, *tail = label_list
     result = head
     for label in tail:
         result = result + ' > ' + label
 
     return result.replace('Root > ', '').replace('_', '')
+
+def get_bool(self, schema, path, key):
+    if path:
+        settings = Gio.Settings.new_with_path(schema, path)
+    else:
+        settings = Gio.Settings.new(schema)
+    return settings.get_boolean(key)
+
+def get_string(self, schema, path, key):
+    if path:
+        settings = Gio.Settings.new_with_path(schema, path)
+    else:
+        settings = Gio.Settings.new(schema)
+    return settings.get_string(key)
 
 def rgba_to_hex(color):
    """
@@ -111,9 +124,8 @@ def get_dmenu(dmenuKeys):
         dmenu_string += '\n' + menu_item
 
     # Get the currently active font
-    settings = Gio.Settings('org.mate.interface')
-    font_name = settings.get_string('font-name')
-    gtk_theme = settings.get_string('gtk-theme')
+    font_name = get_string('org.mate.interface', None, 'font-name')
+    gtk_theme = get_string('org.mate.interface', None, 'gtk-theme')
 
     # Get some colors from the currently selected theme.
     # TODO: Use more robust wrapper to validate the requested colors were found.
@@ -210,7 +222,6 @@ def try_appmenu_interface(window_id):
         #print('AppMenu Action :', action)
         dbusmenu_object_iface.Event(action, 'clicked', 0, 0)
 
-
 """
   try_gtk_interface
 """
@@ -290,12 +301,23 @@ def hud(keystr, user_data):
         try_gtk_interface(gtk_bus_name, gtk_object_path)
 
 if __name__ == "__main__":
-    DBusGMainLoop(set_as_default=True)
-    hud_hotkey = "<Ctrl><Alt>space"
-    Keybinder.init()
-    Keybinder.bind(hud_hotkey, hud, "keystring %s (user data)" % hud_hotkey)
-    print ("Press", hud_hotkey, "to handle keybinding and quit")
+    # Get the configuration
+    enabled = False
+    shortcut = '<Ctrl><Alt>space'
     try:
-        GLib.MainLoop().run()
-    except KeyboardInterrupt:
-        GLib.MainLoop().quit()
+        enabled = get_bool('org.mate.hud', None, 'enabled')
+        shortcut = get_string('org.mate.hud', None, 'shortcut')
+    except:
+        print('org.mate.hud gsettings not found. Exitting.')
+        pass
+
+    if enabled:
+        DBusGMainLoop(set_as_default=True)
+
+        Keybinder.init()
+        Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
+        print ("Press", shortcut, "to handle keybinding and quit")
+        try:
+            GLib.MainLoop().run()
+        except KeyboardInterrupt:
+            GLib.MainLoop().quit()
