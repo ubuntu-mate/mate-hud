@@ -313,7 +313,6 @@ if __name__ == "__main__":
 
     if enabled:
         DBusGMainLoop(set_as_default=True)
-
         Keybinder.init()
         Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
         print ("Press", shortcut, "to handle keybinding and quit")
@@ -321,3 +320,5 @@ if __name__ == "__main__":
             GLib.MainLoop().run()
         except KeyboardInterrupt:
             GLib.MainLoop().quit()
+    else:
+        print('The HUD is disabled. Exitting.')
