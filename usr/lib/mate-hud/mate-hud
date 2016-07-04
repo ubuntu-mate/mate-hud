@@ -5,6 +5,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version('Keybinder', '3.0')
 
 import dbus
+import logging
 import os
 import setproctitle
 import subprocess
@@ -102,6 +103,13 @@ def get_string(schema, path, key):
         settings = Gio.Settings.new(schema)
     return settings.get_string(key)
 
+def get_list(schema, path, key):
+    if path:
+        settings = Gio.Settings.new_with_path(schema, path)
+    else:
+        settings = Gio.Settings.new(schema)
+    return settings.get_strv(key)
+
 def rgba_to_hex(color):
    """
    Return hexadecimal string for :class:`Gdk.RGBA` `color`.
@@ -122,16 +130,15 @@ def get_dmenu(dmenuKeys):
     for menu_item in menu_items:
         dmenu_string += '\n' + menu_item
 
-    # Get the currently active font
+    # Get the currently active font and theme.
     font_name = get_string('org.mate.interface', None, 'font-name')
     gtk_theme = get_string('org.mate.interface', None, 'gtk-theme')
+    dark_themes = get_list('org.mate.hud', None, 'dark-themes')
 
     # Get some colors from the currently selected theme.
     # TODO: Use more robust wrapper to validate the requested colors were found.
     window = Gtk.Window()
     style_context = window.get_style_context()
-
-    dark_themes = {'Ambiance', 'Ambiant-MATE'}
 
     if gtk_theme in dark_themes:
         bg_color = rgba_to_hex(style_context.lookup_color('dark_bg_color')[1])
@@ -218,7 +225,7 @@ def try_appmenu_interface(window_id):
     # --- Use dmenu result
     if dmenu_result in dbusmenu_item_dict:
         action = dbusmenu_item_dict[dmenu_result]
-        #print('AppMenu Action :', action)
+        logging.debug('AppMenu Action : %s', str(action))
         dbusmenu_object_iface.Event(action, 'clicked', 0, 0)
 
 """
@@ -275,12 +282,12 @@ def try_gtk_interface(gtk_bus_name, gtk_object_path):
     # --- Use dmenu result
     if dmenu_result in gtk_menubar_action_dict:
       action = gtk_menubar_action_dict[dmenu_result]
-      #print('GTK Action :', action)
+      logging.debug('GTK Action : %s', str(action))
       gtk_action_object_actions_iface.Activate(action.replace('unity.', ''), [], dict())
 
 def hud(keystr, user_data):
-    print ("Handling", user_data)
-    print ("Event time:", Keybinder.get_current_event_time())
+    logging.debug("Handling %s", str(user_data))
+    logging.debug("Event time: %s", str(Keybinder.get_current_event_time()))
 
     # Get Window properties and GTK MenuModel Bus name
     ewmh = EWMH()
@@ -288,36 +295,39 @@ def hud(keystr, user_data):
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
-    print('Window id is :', window_id)
-    print('_GTK_UNIQUE_BUS_NAME: ', gtk_bus_name)
-    print('_GTK_MENUBAR_OBJECT_PATH: ', gtk_object_path)
+    logging.debug('Window id is : %s', str(window_id))
+    logging.debug('_GTK_UNIQUE_BUS_NAME: %s', str(gtk_bus_name))
+    logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', str(gtk_object_path))
 
     if (not gtk_bus_name) or (not gtk_object_path):
-        print('Trying AppMenu')
+        logging.debug('Trying AppMenu')
         try_appmenu_interface(int(window_id, 16))
     else:
-        print('Trying GTK interface')
+        logging.debug('Trying GTK interface')
         try_gtk_interface(gtk_bus_name, gtk_object_path)
 
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
+    logging.basicConfig(level=logging.INFO)
     # Get the configuration
     enabled = False
     shortcut = '<Ctrl><Alt>space'
+    dark_themes = ['Ambiance', 'Ambiance-MATE']
     try:
         enabled = get_bool('org.mate.hud', None, 'enabled')
         shortcut = get_string('org.mate.hud', None, 'shortcut')
+        dark_themes = get_list('org.mate.hud', None, 'dark-themes')
     except:
-        print('org.mate.hud gsettings not found. Exitting.')
+        logging.error('org.mate.hud gsettings not found. Exitting.')
 
     if enabled:
         DBusGMainLoop(set_as_default=True)
         Keybinder.init()
         Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
-        print ("Press", shortcut, "to handle keybinding and quit")
+        logging.info("Press %s to handle keybinding and quit", shortcut)
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:
             GLib.MainLoop().quit()
     else:
-        print('The HUD is disabled. Exitting.')
+        logging.info('The HUD is disabled. Exitting.')
