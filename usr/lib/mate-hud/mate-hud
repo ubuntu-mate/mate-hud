@@ -68,10 +68,11 @@ class EWMH:
   format_label_list
 """
 def format_label_list(label_list):
+    separator = u'\u0020\u0020\u00BB\u0020\u0020'
     head, *tail = label_list
     result = head
     for label in tail:
-        result = result + ' > ' + label
+        result = result + separator + label
 
     return result.replace('Root > ', '').replace('_', '')
 
@@ -111,6 +112,10 @@ def rgba_to_hex(color):
 def get_dmenu(dmenuKeys, prompt):
     if not dmenuKeys:
         return ''
+
+    # If the prompt is too small, don't use a prompt.
+    if len(prompt) < 2:
+        prompt = ''
 
     dmenu_string, *menu_items = dmenuKeys
     for menu_item in menu_items:
