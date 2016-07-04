@@ -285,7 +285,7 @@ def hud(keystr, user_data):
     gtk_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     logging.debug('Window id is : %s', window_id)
     logging.debug('Window pid is : %s', window_pid)
-    logging.debug('Window name is : %s', window_name)
+    logging.debug('Prompt is : %s', prompt)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
     logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_object_path)
 
