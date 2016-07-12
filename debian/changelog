@@ -1,5 +1,5 @@
-mate-hud (16.10.0) UNRELEASED; urgency=medium
+mate-hud (16.10.0) yakkety; urgency=medium
 
-  * Initial release.
+  * Initial release. Closes (LP: #1602270).
 
  -- Martin Wimpress <code@flexion.org>  Wed, 29 Jun 2016 23:08:50 +0100
