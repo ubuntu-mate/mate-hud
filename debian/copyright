@@ -4,7 +4,8 @@ Upstream-Contact: Martin Wimpress <code@ubuntu-mate.org>
 Source: https://bitbucket.org/ubuntu-mate/mate-hud
 
 Files: README.md
-       usr/lib/mate-hud/*.py
+       usr/lib/mate-hud/mate-hud
+       usr/lib/mate-hud/mate-hud-service
 Copyright: 2016, Martin Wimpress <code@ubuntu-mate.org>
            2015, JAMcNaughton
            2014, Rafaël Bocquet
