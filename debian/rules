@@ -1,9 +1,0 @@
-#!/usr/bin/make -f
-
-DHFLAGS=--parallel
-
-%:
-	dh $@ $(DHFLAGS)
-
-override_dh_install:
-	dh_install --fail-missing
