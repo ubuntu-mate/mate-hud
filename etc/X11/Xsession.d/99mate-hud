@@ -2,7 +2,7 @@
 
 if [ "x$DESKTOP_SESSION" = "xmate" ] || [ "x$XDG_SESSION_DESKTOP" == "xmate" ]; then
     if [ -z "$GTK_MODULES" ] ; then
-        GTK_MODULES="canberra-gtk-module:unity-gtk-module:topmenu-gtk-module"
+        GTK_MODULES="unity-gtk-module"
     else
         GTK_MODULES="unity-gtk-module:$GTK_MODULES"
     fi
