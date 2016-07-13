@@ -79,6 +79,10 @@ In order to remain compatible with `topmenu-gtk-module`, the
   * `unity-gtk2-module`
   * `unity-gtk3-module`
 
+A reference package for Debian/Ubuntu is available from:
+
+  * https://bitbucket.org/flexiondotorg/debian-packages
+
 ## TODO
 
   * **[ DONE ]** Replace `xprop` with Python implementation.
