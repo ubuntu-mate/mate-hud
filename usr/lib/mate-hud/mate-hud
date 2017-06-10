@@ -7,7 +7,6 @@ gi.require_version('Keybinder', '3.0')
 import dbus
 import logging
 import os
-import psutil
 import setproctitle
 import subprocess
 import sys
@@ -109,13 +108,9 @@ def rgba_to_hex(color):
 """
    generate dmenu of available menu items.
 """
-def get_menu(dmenuKeys, prompt):
+def get_menu(dmenuKeys):
     if not dmenuKeys:
         return ''
-
-    # If the prompt is too small, don't use a prompt.
-    if len(prompt) < 2:
-        prompt = ''
 
     dmenu_string, *menu_items = dmenuKeys
     for menu_item in menu_items:
@@ -149,7 +144,7 @@ def get_menu(dmenuKeys, prompt):
 
     dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                   '-location', '1',
-                                  '-width', '100', '-p', prompt,
+                                  '-width', '100', '-p', 'HUD:',
                                   '-lines', '12', '-font', font_name,
                                   '-separator-style', 'solid',
                                   '-hide-scrollbar',
@@ -168,7 +163,7 @@ def get_menu(dmenuKeys, prompt):
 """
   try_appmenu_interface
 """
-def try_appmenu_interface(window_id, prompt):
+def try_appmenu_interface(window_id):
     # --- Get Appmenu Registrar DBus interface
     session_bus = dbus.SessionBus()
     try:
@@ -231,7 +226,7 @@ def try_appmenu_interface(window_id, prompt):
     expanse_all_menu_with_dbus(dbusmenu_root_item[1], True, "")
     menuKeys = sorted(dbusmenu_item_dict.keys())
 
-    menu_result = get_menu(menuKeys, prompt)
+    menu_result = get_menu(menuKeys)
 
     # --- Use dmenu result
     if menu_result in dbusmenu_item_dict:
@@ -251,7 +246,7 @@ def try_appmenu_interface(window_id, prompt):
 """
   try_gtk_interface
 """
-def try_gtk_interface(gtk_bus_name, gtk_object_path, gtk_actions_paths_list, prompt):
+def try_gtk_interface(gtk_bus_name, gtk_object_path, gtk_actions_paths_list):
 
     # --- Ask for menus over DBus --- Credit @1931186
     session_bus = dbus.SessionBus()
@@ -339,7 +334,7 @@ def try_gtk_interface(gtk_bus_name, gtk_object_path, gtk_actions_paths_list, pro
 
 
     menuKeys = sorted(gtk_menubar_action_dict.keys())
-    menu_result = get_menu(menuKeys, prompt)
+    menu_result = get_menu(menuKeys)
 
     # --- Use menu result
     if menu_result in gtk_menubar_action_dict:
@@ -372,7 +367,6 @@ def hud(keystr, user_data):
     win = ewmh.getActiveWindow()
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
     window_pid = ewmh._getProperty('_NET_WM_PID', win)[0]
-    prompt = psutil.Process(window_pid).name() + ': '
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menu_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
@@ -393,7 +387,6 @@ def hud(keystr, user_data):
 
     logging.debug('Window id is : %s', window_id)
     logging.debug('Window pid is : %s', window_pid)
-    logging.debug('Prompt is : %s', prompt)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
     logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menu_object_path)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
@@ -404,7 +397,7 @@ def hud(keystr, user_data):
 
     if (not gtk_bus_name) or (not gtk_menu_object_path):
         logging.debug('Trying AppMenu')
-        try_appmenu_interface(int(window_id, 16), prompt)
+        try_appmenu_interface(int(window_id, 16))
     else:
         # Many apps does not respect menu action groups, such as
         # libreoffice and gnome-mpv, so we have to include all action
@@ -416,7 +409,7 @@ def hud(keystr, user_data):
                                   gtk_app_object_path,
                                   gtk_unity_object_path]
         gtk_actions_paths_list = list(set(gtk_actions_paths_list))
-        try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list, prompt)
+        try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list)
 
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
