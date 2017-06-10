@@ -253,8 +253,7 @@ def try_appmenu_interface(window_id):
 """
   try_gtk_interface
 """
-def try_gtk_interface(gtk_bus_name, gtk_object_path, gtk_actions_paths_list):
-
+def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list):
     # --- Ask for menus over DBus --- Credit @1931186
     session_bus = dbus.SessionBus()
     gtk_menu_object = session_bus.get_object(gtk_bus_name, gtk_menu_object_path)
@@ -380,17 +379,9 @@ def hud(keystr, user_data):
     gtk_win_object_path = ewmh._getProperty('_GTK_WINDOW_OBJECT_PATH', win)
     gtk_unity_object_path = ewmh._getProperty('_UNITY_OBJECT_PATH', win)
 
-    gtk_bus_name,
-    gtk_menu_object_path,
-    gtk_app_object_path,
-    gtk_win_object_path,
-    gtk_unity_object_path = \
-        [i.decode("utf8") if isinstance(i, bytes) \
-        else i for i in [gtk_bus_name,
-                         gtk_menu_object_path,
-                         gtk_app_object_path,
-                         gtk_win_object_path,
-                         gtk_unity_object_path]]
+    gtk_bus_name, gtk_menu_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path = \
+        [i.decode('utf8') if isinstance(i, bytes) \
+        else i for i in [gtk_bus_name, gtk_menu_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
 
     logging.debug('Window id is : %s', window_id)
     logging.debug('Window pid is : %s', window_pid)
@@ -411,11 +402,10 @@ def hud(keystr, user_data):
         # groups. Many other apps have these properties point to the
         # same path, so we need to remove them.
         logging.debug('Trying GTK interface')
-        gtk_actions_paths_list = [gtk_win_object_path,
+        gtk_actions_paths_list = list(set([gtk_win_object_path,
                                   gtk_menu_object_path,
                                   gtk_app_object_path,
-                                  gtk_unity_object_path]
-        gtk_actions_paths_list = list(set(gtk_actions_paths_list))
+                                  gtk_unity_object_path]))
         try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list)
 
 if __name__ == "__main__":
