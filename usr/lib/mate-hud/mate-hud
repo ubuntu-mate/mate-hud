@@ -402,7 +402,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     # Get the configuration
-    enabled = False
     shortcut = '<Ctrl><Alt>space'
     dark_themes = ['Ambiance', 'Ambiance-MATE', 'Ambiance-MATE-Dark']
 
@@ -413,14 +412,11 @@ if __name__ == "__main__":
     except:
         logging.error('org.mate.hud gsettings not found. Exitting.')
 
-    if True:
-        DBusGMainLoop(set_as_default=True)
-        Keybinder.init()
-        Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
-        logging.info("Press %s to handle keybinding and quit", shortcut)
-        try:
-            GLib.MainLoop().run()
-        except KeyboardInterrupt:
-            GLib.MainLoop().quit()
-    else:
-        logging.info('The HUD is disabled. Exitting.')
+    DBusGMainLoop(set_as_default=True)
+    Keybinder.init()
+    Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
+    logging.info("Press %s to handle keybinding and quit", shortcut)
+    try:
+        GLib.MainLoop().run()
+    except KeyboardInterrupt:
+        GLib.MainLoop().quit()
