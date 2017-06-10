@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=MATE HUD
-Exec=/usr/lib/mate-hud/mate-hud
-NoDisplay=true
-X-MATE-Autostart-Phase=Initialization
-X-MATE-Autostart-Notify=false
-X-MATE-AutoRestart=true
