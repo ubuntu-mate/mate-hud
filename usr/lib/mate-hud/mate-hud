@@ -10,6 +10,7 @@ import os
 import setproctitle
 import subprocess
 import sys
+import time
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Keybinder, Gio, GLib, Gtk
 from Xlib import display, protocol, X, Xatom
@@ -62,6 +63,12 @@ class EWMH:
             return None
         return self.display.create_resource_object('window', wId)
 
+def format_path(path):
+    result = path.replace('Root > ', '')
+    result = path.replace('Label Empty > ', '')
+    result = result.replace('_', '')
+    result = result.replace('>', '', 1)
+    return result.replace('>', u'\u0020\u0020\u00BB\u0020\u0020')
 
 """
   format_label_list
@@ -144,7 +151,7 @@ def get_menu(dmenuKeys):
 
     dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                   '-location', '1',
-                                  '-width', '100', '-p', 'HUD:',
+                                  '-width', '100', '-p', 'HUD: ',
                                   '-lines', '12', '-font', font_name,
                                   '-separator-style', 'solid',
                                   '-hide-scrollbar',
@@ -188,7 +195,7 @@ def try_appmenu_interface(window_id):
         logging.info('Unable to access dbusmenu items.')
         return
 
-    dbusmenu_items = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
+    dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
     dbusmenu_item_dict = dict()
 
     #For excluding items which have no action
