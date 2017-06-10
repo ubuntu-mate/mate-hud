@@ -9,6 +9,11 @@ Heads-Up Display (HUD). `mate-hud` was originally forked from
   * https://github.com/jamcnaughton/i3-hud-menu
   * https://github.com/RafaelBocquet/i3-hud-menu
 
+It was subsequently improved by incorporating improvements from
+[snippins](https://gist.github.com/snippins)
+
+  * [HUD.py](https://gist.github.com/snippins/ee943f2b25db555ef12107f7cee20241)
+
 ## What is a HUD and why should I care?
 
 A Heads-Up Display (HUD) allows you to search through an application's
@@ -72,7 +77,6 @@ In order to remain compatible with `topmenu-gtk-module`, the
   * `mate-desktop`
   * `python3`
   * `python3-dbus`
-  * `python3-psutil`
   * `python3-setproctitle`
   * `python3-xlib`
   * `rofi`
