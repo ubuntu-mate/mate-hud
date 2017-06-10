@@ -405,8 +405,7 @@ if __name__ == "__main__":
     shortcut = '<Ctrl><Alt>space'
     dark_themes = ['Ambiance', 'Ambiance-MATE', 'Ambiance-MATE-Dark']
 
-    try:
-        enabled = get_bool('org.mate.hud', None, 'enabled')
+    try:        
         shortcut = get_string('org.mate.hud', None, 'shortcut')
         dark_themes = get_list('org.mate.hud', None, 'dark-themes')
     except:
