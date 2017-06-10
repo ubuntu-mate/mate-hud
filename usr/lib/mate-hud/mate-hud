@@ -362,7 +362,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                 logging.debug('GTK Action : %s', str(action))
                 action_iface.Activate(action, target, not_use_platform_data)
             except Exception as e:
-                logging.debug(action_path + ': %s', str(e))
+                logging.debug('action_path: %s', str(action_path))
 
 def hud(keystr, user_data):
     logging.debug("Handling %s", str(user_data))
