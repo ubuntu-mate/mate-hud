@@ -64,23 +64,12 @@ class EWMH:
         return self.display.create_resource_object('window', wId)
 
 def format_path(path):
-    result = path.replace('Root > ', '')
-    result = path.replace('Label Empty > ', '')
+    logging.debug('Path:%s', path)
+    result = path.replace('>', '', 1)
+    result = result.replace('Root > ', '')
+    result = result.replace('Label Empty > ', '')
     result = result.replace('_', '')
-    result = result.replace('>', '', 1)
     return result.replace('>', u'\u0020\u0020\u00BB\u0020\u0020')
-
-"""
-  format_label_list
-"""
-def format_label_list(label_list):
-    separator = u'\u0020\u0020\u00BB\u0020\u0020'
-    head, *tail = label_list
-    result = head
-    for label in tail:
-        result = result + separator + label
-
-    return result.replace('Root > ', '').replace('_', '')
 
 def get_bool(schema, path, key):
     if path:
