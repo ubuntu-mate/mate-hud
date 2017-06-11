@@ -243,10 +243,14 @@ def try_appmenu_interface(window_id):
   try_gtk_interface
 """
 def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list):
-    # --- Ask for menus over DBus --- Credit @1931186
     session_bus = dbus.SessionBus()
-    gtk_menu_object = session_bus.get_object(gtk_bus_name, gtk_menu_object_path)
-    gtk_menu_menus_iface = dbus.Interface(gtk_menu_object, dbus_interface='org.gtk.Menus')
+    # --- Ask for menus over DBus --- Credit @1931186
+    try:
+        gtk_menu_object = session_bus.get_object(gtk_bus_name, gtk_menu_object_path)
+        gtk_menu_menus_iface = dbus.Interface(gtk_menu_object, dbus_interface='org.gtk.Menus')
+    except dbus.exceptions.DBusException:
+        logging.info('Unable to connect with com.gtk.Menus.')
+        return
 
     # Here's the deal: The idea is to reduce the number of calls to the proxy and keep it as low as possible
     # because the proxy is a potential bottleneck
