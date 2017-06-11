@@ -147,7 +147,7 @@ def get_menu(dmenuKeys):
                                   '-color-enabled',
                                   '-color-window', bg_color +", " + borders + ", " + borders,
                                   '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
-                                  '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
+                                  '-color-active', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
                                   '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + error_bg_color + ", " + error_fg_color],
                                   stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
