@@ -327,7 +327,6 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
 
     gtk_menu_menus_iface.End(usedLayers)
 
-
     menuKeys = sorted(gtk_menubar_action_dict.keys())
     menu_result = get_menu(menuKeys)
 
@@ -340,7 +339,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             if (not isinstance(target, list)):
                 target = [target]
         except:
-          pass
+            pass
 
         for action_path in gtk_actions_paths_list:
             try:
@@ -386,8 +385,8 @@ def hud(keystr, user_data):
         logging.debug('Trying AppMenu')
         try_appmenu_interface(int(window_id, 16))
     else:
-        # Many apps does not respect menu action groups, such as
-        # libreoffice and gnome-mpv, so we have to include all action
+        # Many apps do not respect menu action groups, such as
+        # LibreOffice and gnome-mpv, so we have to include all action
         # groups. Many other apps have these properties point to the
         # same path, so we need to remove them.
         logging.debug('Trying GTK interface')
