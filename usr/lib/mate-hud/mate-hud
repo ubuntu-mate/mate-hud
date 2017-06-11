@@ -104,13 +104,13 @@ def rgba_to_hex(color):
 """
    generate dmenu of available menu items.
 """
-def get_menu(dmenuKeys):
-    if not dmenuKeys:
+def get_menu(menuKeys):
+    if not menuKeys:
         return ''
 
-    dmenu_string, *menu_items = dmenuKeys
+    menu_string, *menu_items = menuKeys
     for menu_item in menu_items:
-        dmenu_string += '\n' + menu_item
+        menu_string += '\n' + menu_item
 
     # Get the currently active font and theme.
     font_name = get_string('org.mate.interface', None, 'font-name')
@@ -138,23 +138,23 @@ def get_menu(dmenuKeys):
     text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
     borders = rgba_to_hex(style_context.lookup_color('theme_unfocused_fg_color')[1])
 
-    dmenu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
-                                  '-location', '1',
-                                  '-width', '100', '-p', 'HUD: ',
-                                  '-lines', '12', '-font', font_name,
-                                  '-separator-style', 'solid',
-                                  '-hide-scrollbar',
-                                  '-color-enabled',
-                                  '-color-window', bg_color +", " + borders + ", " + borders,
-                                  '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
-                                  '-color-active', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
-                                  '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + error_bg_color + ", " + error_fg_color],
-                                  stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    dmenu_cmd.stdin.write(dmenu_string.encode('utf-8'))
-    dmenu_result = dmenu_cmd.communicate()[0].decode('utf8').rstrip()
-    dmenu_cmd.stdin.close()
+    menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
+                                 '-location', '1',
+                                 '-width', '100', '-p', 'HUD: ',
+                                 '-lines', '12', '-font', font_name,
+                                 '-separator-style', 'solid',
+                                 '-hide-scrollbar',
+                                 '-color-enabled',
+                                 '-color-window', bg_color +", " + borders + ", " + borders,
+                                 '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
+                                 '-color-active', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
+                                 '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + error_bg_color + ", " + error_fg_color],
+                                 stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    menu_cmd.stdin.write(menu_string.encode('utf-8'))
+    menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
+    menu_cmd.stdin.close()
 
-    return dmenu_result
+    return menu_result
 
 """
   try_appmenu_interface
