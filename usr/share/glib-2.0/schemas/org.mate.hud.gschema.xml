@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.mate.hud" path="/org/mate/hud/">
-    <key type="as" name="dark-themes">
-      <default>[ 'Ambiance', 'Ambiant-MATE', 'Ambiant-MATE-Dark']</default>
-      <summary>List of possible dark GTK themes.</summary>
-      <description>A list of GTK themes that define "dark_bg_color" and "dark_fg_color" and should prefer those over "theme_bg_color" and "theme_fg_color" when applying a color theme to the MATE HUD.</description>
-    </key>
     <key type="s" name="shortcut">
       <default>'&lt;Ctrl&gt;&lt;Alt&gt;space'</default>
       <summary>The keyboard shortcut used to pop-up the MATE HUD</summary>
