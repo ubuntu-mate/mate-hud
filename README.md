@@ -25,18 +25,18 @@ menus.
 
 ### Implementation
 
-`mate-hud-service.py` is an implementation of the
-`com.canonical.AppMenu.Registrar` DBus service. Applications exporting
-their menu via `dbusmenu` need this service to run. `mate-hud.py` tries
-to get the menu of the currently focused X11 window, lists possible
-actions and asks the user which one to run. `mate-hud.py`, binds itself
-to the `<Ctrl><Alt>space` keyboard shortcut by default.
+[vala-panel-appmenu](https://github.com/rilian-la-te/vala-panel-appmenu)
+includes an implementation of the `com.canonical.AppMenu.Registrar` DBus
+service. Applications exporting their menu via `dbusmenu` need this
+service to run. `mate-hud.py` tries to get the menu of the currently
+focused window, lists possible actions and asks the user which one to
+run. `mate-hud.py`, binds itself to the `<Ctrl><Alt>space` keyboard
+shortcut by default.
 
 ### Gsettings
 
-`mate-hud.py` reads two gsettings keys:
+`mate-hud.py` reads one gsettings keys:
 
-  * `org.mate.hud`: `enabled`  (Default: False)
   * `org.mate.hud`: `shortcut` (Default: <Ctrl><Alt>space)
 
 `mate-hud.py` will not execute until those gsettings keys are created,
@@ -46,7 +46,7 @@ will soon add the functionality the endable/disable `mate-hud`.
 
 ### Manual Setup
 
-  * `mate-hud-service.py` should be started on session start-up.
+  * The `vala-panel-appmenu` applet for MATE should be added to a panel.
   * `mate-hud.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
@@ -59,15 +59,7 @@ fi
 
 export GTK_MODULES
 export UBUNTU_MENUPROXY=1
-export APPMENU_DISPLAY_BOTH=1
 ```
-
-### Known Issues
-
-In order to remain compatible with `topmenu-gtk-module`, the
-`unity-gtk-module` must be referenced before it. For example:
-
-    GTK_MODULES="canberra-gtk-module:unity-gtk-module:topmenu-gtk-module"
 
 ## Dependencies
 
@@ -86,10 +78,3 @@ In order to remain compatible with `topmenu-gtk-module`, the
 A reference package for Debian/Ubuntu is available from:
 
   * https://bitbucket.org/flexiondotorg/debian-packages
-
-## TODO
-
-  * **[ DONE ]** Replace `xprop` with Python implementation.
-  * **[ DONE ]** Replace `dmenu` with [rofi](https://davedavenport.github.io/rofi/)
-  * **[ DONE ]** Automatically theme `rofi` based on the currently selected GTK theme.
-  * **[ DONE ]** Bind to a configurable keybinding.
