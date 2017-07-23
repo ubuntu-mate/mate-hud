@@ -2,7 +2,6 @@
 
 import gi
 gi.require_version("Gtk", "3.0")
-gi.require_version('Keybinder', '3.0')
 
 import dbus
 import logging
@@ -11,9 +10,10 @@ import setproctitle
 import subprocess
 import sys
 import time
+import threading
 from dbus.mainloop.glib import DBusGMainLoop
-from gi.repository import Keybinder, Gio, GLib, Gtk
-from Xlib import display, protocol, X, Xatom
+from gi.repository import Gio, GLib, Gtk, Gdk, GObject
+from Xlib import display, protocol, X, Xatom, error
 
 class EWMH:
     """This class provides the ability to get and set properties defined
@@ -41,7 +41,7 @@ class EWMH:
         atom = win.get_full_property(self.display.get_atom(_type), X.AnyPropertyType)
         if atom:
             return atom.value
-    
+
     def _setProperty(self, _type, data, win=None, mask=None):
         """Send a ClientMessage event to the root window"""
         if not win:
@@ -51,13 +51,13 @@ class EWMH:
         else:
             data = (data+[0]*(5-len(data)))[:5]
             dataSize = 32
-        
+
         ev = protocol.event.ClientMessage(window=win, client_type=self.display.get_atom(_type), data=(dataSize, data))
 
         if not mask:
             mask = (X.SubstructureRedirectMask|X.SubstructureNotifyMask)
         self.root.send_event(ev, event_mask=mask)
-    
+
     def _createWindow(self, wId):
         if not wId:
             return None
@@ -359,9 +359,8 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             except Exception as e:
                 logging.debug('action_path: %s', str(action_path))
 
-def hud(keystr, user_data):
+def hud(widget, keystr, user_data):
     logging.debug("Handling %s", str(user_data))
-    logging.debug("Event time: %s", str(Keybinder.get_current_event_time()))
 
     # Get Window properties and GTK MenuModel Bus name
     ewmh = EWMH()
@@ -403,22 +402,129 @@ def hud(keystr, user_data):
                                   gtk_unity_object_path]))
         try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list)
 
+class GlobalKeyBinding(GObject.GObject, threading.Thread):
+    __gsignals__ = {
+        'activate': (GObject.SignalFlags.RUN_LAST, None, ()),
+    }
+
+    def __init__(self):
+        GObject.GObject.__init__(self)
+        threading.Thread.__init__(self)
+        self.setDaemon(True)
+
+        self.display = display.Display()
+        self.screen = self.display.screen()
+        self.window = self.screen.root
+        self.keymap = Gdk.Keymap().get_default()
+        self.ignored_masks = self.get_mask_combinations(X.LockMask | X.Mod2Mask | X.Mod5Mask)
+        self.map_modifiers()
+
+    def get_mask_combinations(self, mask):
+        return [x for x in range(mask+1) if not (x & ~mask)]
+
+    def map_modifiers(self):
+        gdk_modifiers = (Gdk.ModifierType.CONTROL_MASK, Gdk.ModifierType.SHIFT_MASK, Gdk.ModifierType.MOD1_MASK,
+                         Gdk.ModifierType.MOD2_MASK, Gdk.ModifierType.MOD3_MASK, Gdk.ModifierType.MOD4_MASK, Gdk.ModifierType.MOD5_MASK,
+                         Gdk.ModifierType.SUPER_MASK, Gdk.ModifierType.HYPER_MASK)
+        self.known_modifiers_mask = 0
+        for modifier in gdk_modifiers:
+            if "Mod" not in Gtk.accelerator_name(0, modifier) or "Mod4" in Gtk.accelerator_name(0, modifier):
+                self.known_modifiers_mask |= modifier
+
+    def idle(self):
+        self.emit("activate")
+        return False
+
+    def activate(self):
+        GLib.idle_add(self.run)
+
+    def grab(self, shortcut):
+        accelerator = shortcut.replace("<Super>", "<Mod4>")
+        keyval, modifiers = Gtk.accelerator_parse(accelerator)
+        if not accelerator or (not keyval and not modifiers):
+            self.keycode = None
+            self.modifiers = None
+            return False
+
+        self.keycode = self.keymap.get_entries_for_keyval(keyval).keys[0].keycode
+        self.modifiers = int(modifiers)
+
+        # Request to receive key press/release reports from other windows that may not be using modifiers
+        catch = error.CatchError(error.BadWindow)
+        if self.modifiers:
+            self.window.change_attributes(onerror=catch, event_mask=X.KeyPressMask|X.KeyReleaseMask)
+        else:
+            self.window.change_attributes(onerror=catch, event_mask=X.NoEventMask)
+        if catch.get_error():
+            return False
+
+        catch = error.CatchError(error.BadAccess)
+        for ignored_mask in self.ignored_masks:
+            mod = self.modifiers | ignored_mask
+            result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeAsync, onerror=catch)
+        self.display.flush()
+        if catch.get_error():
+            return False
+        return True
+
+    def run(self):
+        self.running = True
+        wait_for_release = False
+        while self.running:
+            event = self.display.next_event()
+            if event.type == X.KeyPress and event.detail == self.keycode and not wait_for_release:
+                modifiers = event.state & self.known_modifiers_mask
+                if modifiers == self.modifiers:
+                    wait_for_release = True
+            elif event.type == X.KeyRelease and event.detail == self.keycode and wait_for_release:
+                GLib.idle_add(self.idle)
+                wait_for_release = False
+            else:
+                if not self.modifiers:
+                    focus = self.display.get_input_focus()
+                    self.display.ungrab_keyboard(event.time)
+                    self.display.send_event(focus.focus, event, X.KeyPressMask | X.KeyReleaseMask, True)
+                wait_for_release = False
+
+    def stop(self):
+        self.running = False
+        self.ungrab()
+        self.display.close()
+
+    def ungrab(self):
+        if self.keycode:
+            self.window.ungrab_key(self.keycode, X.AnyModifier, self.window)
+
+    def rebind(self, shortcut):
+        self.ungrab()
+        if shortcut != "":
+            self.grab(shortcut)
+
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
     logging.basicConfig(level=logging.INFO)
 
-    # Get the configuration
-    shortcut = '<Ctrl><Alt>space'
+    def change_shortcut(schema, key):
+        shortcut = settings.get_string("shortcut")
+        keybinder.rebind(shortcut)
 
-    try:        
+    # Get the configuration
+    try:
         shortcut = get_string('org.mate.hud', None, 'shortcut')
     except:
-        logging.error('org.mate.hud gsettings not found. Exitting.')
+        shortcut = '<Super>Alt_L'
+        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
 
     DBusGMainLoop(set_as_default=True)
-    Keybinder.init()
-    Keybinder.bind(shortcut, hud, "keystring %s (user data)" % shortcut)
+    keybinder = GlobalKeyBinding()
+    keybinder.grab(shortcut)
+    keybinder.connect("activate", hud, shortcut, "keystring %s (user data)" % shortcut)
+    keybinder.start()
     logging.info("Press %s to handle keybinding and quit", shortcut)
+
+    settings = Gio.Settings.new("org.mate.hud")
+    settings.connect("changed::shortcut", change_shortcut)
+
     try:
         GLib.MainLoop().run()
     except KeyboardInterrupt:
