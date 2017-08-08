@@ -462,6 +462,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
             result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeAsync, onerror=catch)
+        result = self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeAsync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
         if catch.get_error():
             return False
@@ -479,11 +480,16 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
             elif event.type == X.KeyRelease and event.detail == self.keycode and wait_for_release:
                 GLib.idle_add(self.idle)
                 wait_for_release = False
+            elif event.type == X.ButtonPress:
+                self.display.ungrab_keyboard(event.time)
+                self.display.ungrab_pointer(event.time)
+                query_pointer = self.window.query_pointer()
+                self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
+                wait_for_release = False
             else:
                 if not self.modifiers:
-                    focus = self.display.get_input_focus()
                     self.display.ungrab_keyboard(event.time)
-                    self.display.send_event(focus.focus, event, X.KeyPressMask | X.KeyReleaseMask, True)
+                    self.display.send_event(self.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
                 wait_for_release = False
 
     def stop(self):
@@ -512,7 +518,7 @@ if __name__ == "__main__":
     try:
         shortcut = get_string('org.mate.hud', None, 'shortcut')
     except:
-        shortcut = '<Super>Alt_L'
+        shortcut = 'Alt_L'
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
 
     DBusGMainLoop(set_as_default=True)

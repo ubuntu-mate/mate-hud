@@ -2,12 +2,11 @@
 <schemalist>
   <schema id="org.mate.hud" path="/org/mate/hud/">
     <key type="s" name="shortcut">
-      <default>'<![CDATA[<Super>Alt_L]]>'</default>
+      <default>'Alt_L'</default>
       <summary>The keyboard shortcut used to pop-up the MATE HUD</summary>
       <description>
         The format looks like "<![CDATA[<Control>a]]>" or "<![CDATA[<Shift><Alt>F1]]>".
         The parser is fairly liberal and allows lower or upper case, and also abbreviations such as "<![CDATA[<Ctl>]]>" and "<![CDATA[<Ctrl>]]>".
-        Note that using a single modifier key, such as "Alt_L", as your shortcut may cause erratic behaviour with other window shortcuts that use the same key.
       </description>
     </key>
   </schema>
