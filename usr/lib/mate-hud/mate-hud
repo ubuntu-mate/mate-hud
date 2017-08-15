@@ -366,7 +366,6 @@ def hud(widget, keystr, user_data):
     ewmh = EWMH()
     win = ewmh.getActiveWindow()
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
-    window_pid = ewmh._getProperty('_NET_WM_PID', win)[0]
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menu_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
@@ -378,7 +377,6 @@ def hud(widget, keystr, user_data):
         else i for i in [gtk_bus_name, gtk_menu_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
 
     logging.debug('Window id is : %s', window_id)
-    logging.debug('Window pid is : %s', window_pid)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
     logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menu_object_path)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
