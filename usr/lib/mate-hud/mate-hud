@@ -460,11 +460,25 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
             result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeAsync, onerror=catch)
-        result = self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeAsync, X.GrabModeAsync, X.NONE, X.NONE)
+        # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
+        result = self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
         if catch.get_error():
             return False
         return True
+
+    # Get which window manager we're currently using (Marco, Compiz, Metacity, etc...)
+    def get_wm(self):
+        name = ''
+        wm_check = self.display.get_atom('_NET_SUPPORTING_WM_CHECK')
+        win_id = self.window.get_full_property(wm_check, X.AnyPropertyType)
+        if win_id:
+            w = self.display.create_resource_object("window", win_id.value[0])
+            wm_name = self.display.get_atom('_NET_WM_NAME')
+            prop = w.get_full_property(wm_name, X.AnyPropertyType)
+            if prop:
+                name = prop.value
+        return name.lower()
 
     def run(self):
         self.running = True
@@ -479,10 +493,16 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                 GLib.idle_add(self.idle)
                 wait_for_release = False
             elif event.type == X.ButtonPress:
-                self.display.ungrab_keyboard(event.time)
-                self.display.ungrab_pointer(event.time)
-                query_pointer = self.window.query_pointer()
-                self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
+                self.display.allow_events(X.ReplayPointer, event.time)
+                # Compiz would rather not have the event sent to it and just read it from the replayed queue
+                # TODO: Explore changing Marco to behave similarly, thus eliminating the following chunk of code.
+                #       This is not trivial and may break many other things.
+                wm = self.get_wm()
+                if wm != "compiz":
+                    self.display.ungrab_keyboard(event.time)
+                    self.display.ungrab_pointer(event.time)
+                    query_pointer = self.window.query_pointer()
+                    self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
                 wait_for_release = False
             else:
                 if not self.modifiers:
