@@ -141,12 +141,17 @@ def get_menu(menuKeys):
     info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
     text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
 
+    shortcut = get_shortcut()
+
     menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                  '-location', '1',
                                  '-width', '100', '-p', 'HUD: ',
                                  '-lines', '12', '-font', font_name,
                                  '-separator-style', 'solid',
                                  '-hide-scrollbar',
+                                 '-click-to-exit',
+                                 '-kb-cancel', 'Escape,' + shortcut,
+                                 '-monitor', '-4', # show on monitor with the currently focused window
                                  '-color-enabled',
                                  '-color-window', bg_color +", " + borders + ", " + borders,
                                  '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
@@ -524,6 +529,14 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         if shortcut != "":
             self.grab(shortcut)
 
+def get_shortcut():
+    shortcut = 'Alt_L'
+    try:
+        shortcut = get_string('org.mate.hud', None, 'shortcut')
+    except:
+        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
+    return shortcut
+
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
     logging.basicConfig(level=logging.INFO)
@@ -532,19 +545,14 @@ if __name__ == "__main__":
         shortcut = settings.get_string("shortcut")
         keybinder.rebind(shortcut)
 
-    # Get the configuration
-    try:
-        shortcut = get_string('org.mate.hud', None, 'shortcut')
-    except:
-        shortcut = 'Alt_L'
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
+    shortcut = get_shortcut()
 
     DBusGMainLoop(set_as_default=True)
     keybinder = GlobalKeyBinding()
     keybinder.grab(shortcut)
     keybinder.connect("activate", hud, shortcut, "keystring %s (user data)" % shortcut)
     keybinder.start()
-    logging.info("Press %s to handle keybinding and quit", shortcut)
+    logging.info("Press %s to handle keybinding", shortcut)
 
     settings = Gio.Settings.new("org.mate.hud")
     settings.connect("changed::shortcut", change_shortcut)
