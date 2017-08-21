@@ -493,20 +493,20 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                 GLib.idle_add(self.idle)
                 wait_for_release = False
             elif event.type == X.ButtonPress:
-                self.display.allow_events(X.ReplayPointer, event.time)
+                self.display.allow_events(X.ReplayPointer, X.CurrentTime)
                 # Compiz would rather not have the event sent to it and just read it from the replayed queue
                 # TODO: Explore changing Marco to behave similarly, thus eliminating the following chunk of code.
                 #       This is not trivial and may break many other things.
                 wm = self.get_wm()
                 if wm != "compiz":
-                    self.display.ungrab_keyboard(event.time)
-                    self.display.ungrab_pointer(event.time)
+                    self.display.ungrab_keyboard(X.CurrentTime)
+                    self.display.ungrab_pointer(X.CurrentTime)
                     query_pointer = self.window.query_pointer()
                     self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
                 wait_for_release = False
             else:
                 if not self.modifiers:
-                    self.display.ungrab_keyboard(event.time)
+                    self.display.ungrab_keyboard(X.CurrentTime)
                     self.display.send_event(self.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
                 wait_for_release = False
 
