@@ -153,7 +153,7 @@ def get_menu(menuKeys):
                                  '-levenshtein-sort',
                                  '-line-padding', '2',
                                  '-kb-cancel', 'Escape,' + shortcut,
-                                 '-monitor', '-4', # show on monitor with the currently focused window
+                                 '-monitor', '-2', # show in the current application
                                  '-color-enabled',
                                  '-color-window', bg_color +", " + borders + ", " + borders,
                                  '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
