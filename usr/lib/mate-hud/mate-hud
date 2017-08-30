@@ -467,7 +467,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         catch = error.CatchError(error.BadAccess)
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
-            result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeAsync, onerror=catch)
+            result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeSync, onerror=catch)
         # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
         result = self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
@@ -494,10 +494,12 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         while self.running:
             event = self.display.next_event()
             if event.type == X.KeyPress and event.detail == self.keycode and not wait_for_release:
+                self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
                 modifiers = event.state & self.known_modifiers_mask
                 if modifiers == self.modifiers:
                     wait_for_release = True
             elif event.type == X.KeyRelease and event.detail == self.keycode and wait_for_release:
+                self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
                 GLib.idle_add(self.idle)
                 wait_for_release = False
             elif event.type == X.ButtonPress:
@@ -513,6 +515,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                     self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
                 wait_for_release = False
             else:
+                self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
                 if not self.modifiers:
                     self.display.ungrab_keyboard(X.CurrentTime)
                     self.display.send_event(self.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
