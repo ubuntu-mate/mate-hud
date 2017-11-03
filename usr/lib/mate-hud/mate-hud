@@ -141,7 +141,10 @@ def get_menu(menuKeys):
     info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
     text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
 
+    # Allow closing the HUD with the same modifier key that opens it
     shortcut = get_shortcut()
+    keyval, modifiers = Gtk.accelerator_parse(shortcut)
+    shortcut = '' if modifiers else ',' + shortcut
 
     menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                  '-location', '1',
@@ -152,7 +155,7 @@ def get_menu(menuKeys):
                                  '-click-to-exit',
                                  '-levenshtein-sort',
                                  '-line-padding', '2',
-                                 '-kb-cancel', 'Escape,' + shortcut,
+                                 '-kb-cancel', 'Escape' + shortcut,
                                  '-sync', # withhold display until menu entries are ready
                                  '-monitor', '-2', # show in the current application
                                  '-color-enabled',
@@ -422,11 +425,31 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         self.screen = self.display.screen()
         self.window = self.screen.root
         self.keymap = Gdk.Keymap().get_default()
+        self.keycodes = self.get_keycodes()
         self.ignored_masks = self.get_mask_combinations(X.LockMask | X.Mod2Mask | X.Mod5Mask)
         self.map_modifiers()
 
     def get_mask_combinations(self, mask):
         return [x for x in range(mask+1) if not (x & ~mask)]
+
+    # Determine valid keycodes that can operate bindings within a window
+    def get_keycodes(self):
+        keycodes = []
+
+        # Always allow `<Alt>Enter` to be replayed
+        entersym = Gtk.accelerator_parse("Return").accelerator_key
+        entercode = self.display.keysym_to_keycode(entersym)
+        keycodes.append(entercode)
+
+        # Allow replaying supported keycodes
+        for sym, codes in self.display._keymap_syms.items():
+            keycode = self.display.keysym_to_keycode(sym)
+            # Valid codes have keysyms from 8 to 255, inclusive
+            if sym >= 8 and sym <= 255 and keycode not in keycodes:
+                keycodes.append(keycode)
+
+        keycodes.sort()
+        return keycodes
 
     def map_modifiers(self):
         gdk_modifiers = (Gdk.ModifierType.CONTROL_MASK, Gdk.ModifierType.SHIFT_MASK, Gdk.ModifierType.MOD1_MASK,
@@ -467,9 +490,9 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         catch = error.CatchError(error.BadAccess)
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
-            result = self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeAsync, onerror=catch)
+            self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeSync, onerror=catch)
         # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
-        result = self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
+        self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
         if catch.get_error():
             return False
@@ -497,14 +520,14 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                 modifiers = event.state & self.known_modifiers_mask
                 if modifiers == self.modifiers:
                     wait_for_release = True
+                self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
             elif event.type == X.KeyRelease and event.detail == self.keycode and wait_for_release:
                 GLib.idle_add(self.idle)
                 wait_for_release = False
+                self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
             elif event.type == X.ButtonPress:
                 self.display.allow_events(X.ReplayPointer, X.CurrentTime)
                 # Compiz would rather not have the event sent to it and just read it from the replayed queue
-                # TODO: Explore changing Marco to behave similarly, thus eliminating the following chunk of code.
-                #       This is not trivial and may break many other things.
                 wm = self.get_wm()
                 if wm != "compiz":
                     self.display.ungrab_keyboard(X.CurrentTime)
@@ -513,9 +536,16 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                     self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
                 wait_for_release = False
             else:
+                # Replay event if the display supports it as a window-based binding
+                # otherwise send it asynchronously to let the top-level window grab it
+                if event.detail in self.keycodes:
+                    self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
+                else:
+                    self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+
                 if not self.modifiers:
                     self.display.ungrab_keyboard(X.CurrentTime)
-                    self.display.send_event(self.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
+                    self.display.send_event(event.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
                 wait_for_release = False
 
     def stop(self):
