@@ -9,5 +9,13 @@
         The parser is fairly liberal and allows lower or upper case, and also abbreviations such as "<![CDATA[<Ctl>]]>" and "<![CDATA[<Ctrl>]]>".
       </description>
     </key>
+    <key type="i" name="tap-timeout">
+      <default>250</default>
+      <summary>The timeout between key press and release to determine if the user meant to open MATE HUD</summary>
+      <description>
+        This only applies to single key shortcuts (e.g. `Alt_L`). It prevents the HUD from showing up if the user keeps the shortcut pressed for longer than the timeout.
+        Set to 0 to disable the timeout.
+      </description>
+    </key>
   </schema>
 </schemalist>
