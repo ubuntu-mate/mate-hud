@@ -85,6 +85,13 @@ def get_string(schema, path, key):
         settings = Gio.Settings.new(schema)
     return settings.get_string(key)
 
+def get_number(schema, path, key):
+    if path:
+        settings = Gio.Settings.new_with_path(schema, path)
+    else:
+        settings = Gio.Settings.new(schema)
+    return settings.get_int(key)
+
 def get_list(schema, path, key):
     if path:
         settings = Gio.Settings.new_with_path(schema, path)
@@ -428,6 +435,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         self.keycodes = self.get_keycodes()
         self.ignored_masks = self.get_mask_combinations(X.LockMask | X.Mod2Mask | X.Mod5Mask)
         self.map_modifiers()
+        self.tap_timeout = get_number('org.mate.hud', None, 'tap-timeout')
 
     def get_mask_combinations(self, mask):
         return [x for x in range(mask+1) if not (x & ~mask)]
@@ -491,8 +499,9 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
             self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeSync, onerror=catch)
-        # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
-        self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
+        if not self.modifiers:
+           # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
+           self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
         if catch.get_error():
             return False
@@ -513,40 +522,62 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
 
     def run(self):
         self.running = True
-        wait_for_release = False
+        possible_tap = False
+        tap_start = 0
         while self.running:
             event = self.display.next_event()
-            if event.type == X.KeyPress and event.detail == self.keycode and not wait_for_release:
-                modifiers = event.state & self.known_modifiers_mask
-                if modifiers == self.modifiers:
-                    wait_for_release = True
-                self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
-            elif event.type == X.KeyRelease and event.detail == self.keycode and wait_for_release:
-                GLib.idle_add(self.idle)
-                wait_for_release = False
-                self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
-            elif event.type == X.ButtonPress:
-                self.display.allow_events(X.ReplayPointer, X.CurrentTime)
-                # Compiz would rather not have the event sent to it and just read it from the replayed queue
-                wm = self.get_wm()
-                if wm != "compiz":
-                    self.display.ungrab_keyboard(X.CurrentTime)
-                    self.display.ungrab_pointer(X.CurrentTime)
-                    query_pointer = self.window.query_pointer()
-                    self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
-                wait_for_release = False
-            else:
-                # Replay event if the display supports it as a window-based binding
-                # otherwise send it asynchronously to let the top-level window grab it
-                if event.detail in self.keycodes:
-                    self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
-                else:
-                    self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
 
-                if not self.modifiers:
-                    self.display.ungrab_keyboard(X.CurrentTime)
-                    self.display.send_event(event.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
-                wait_for_release = False
+            if self.modifiers:
+                # Use simpler logic when using traditional combined keybindings
+                modifiers = event.state & self.known_modifiers_mask
+                if event.type == X.KeyPress and event.detail == self.keycode and modifiers == self.modifiers:
+                    GLib.idle_add(self.idle)
+                self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
+
+            else:
+               # Cancel waiting for the key release if it's not a tap
+               if self.tap_timeout and event.time and event.time - tap_start > self.tap_timeout:
+                  possible_tap = False
+
+               # KeyPress, determine if it's the begining of the tap
+               if event.type == X.KeyPress and event.detail == self.keycode and not possible_tap:
+                   tap_start = event.time
+                   modifiers = event.state & self.known_modifiers_mask
+                   if modifiers == self.modifiers:
+                       possible_tap = True
+                   self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
+
+               # KeyRelease - determine if it's the end of the tap and activate the HUD
+               elif event.type == X.KeyRelease and event.detail == self.keycode and possible_tap:
+                   GLib.idle_add(self.idle)
+                   possible_tap = False
+                   self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+
+               # Modifiers are often used with mouse events - don't let the system swallow those
+               elif event.type == X.ButtonPress:
+                   self.display.allow_events(X.ReplayPointer, X.CurrentTime)
+                   # Compiz would rather not have the event sent to it and just read it from the replayed queue
+                   wm = self.get_wm()
+                   if wm != "compiz":
+                       self.display.ungrab_keyboard(X.CurrentTime)
+                       self.display.ungrab_pointer(X.CurrentTime)
+                       query_pointer = self.window.query_pointer()
+                       self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
+                   possible_tap = False
+
+               # If the user presses another key in between the KeyPress and the KeyRelease, they
+               # meant to use a different shortcut - determine what to do based on the keycode
+               else:
+                   # Replay event if the display supports it as a window-based binding
+                   # otherwise send it asynchronously to let the top-level window grab it
+                   if event.detail in self.keycodes:
+                       self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
+                   else:
+                       self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+
+                   self.display.ungrab_keyboard(X.CurrentTime)
+                   self.display.send_event(event.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
+                   possible_tap = False
 
     def stop(self):
         self.running = False
@@ -578,6 +609,10 @@ if __name__ == "__main__":
         shortcut = settings.get_string("shortcut")
         keybinder.rebind(shortcut)
 
+    def change_tap_timeout(schema, key):
+        tap_timeout = settings.get_int("tap-timeout")
+        keybinder.tap_timeout = tap_timeout;
+
     shortcut = get_shortcut()
 
     DBusGMainLoop(set_as_default=True)
@@ -589,6 +624,7 @@ if __name__ == "__main__":
 
     settings = Gio.Settings.new("org.mate.hud")
     settings.connect("changed::shortcut", change_shortcut)
+    settings.connect("changed::tap-timeout", change_tap_timeout)
 
     try:
         GLib.MainLoop().run()
