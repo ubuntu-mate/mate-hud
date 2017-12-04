@@ -444,17 +444,26 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
     def get_keycodes(self):
         keycodes = []
 
+        # Determine range of supported keycodes
+        min_keycode = self.display.display.info.min_keycode
+        max_keycode = self.display.display.info.max_keycode
+
         # Always allow `<Alt>Enter` to be replayed
         entersym = Gtk.accelerator_parse("Return").accelerator_key
         entercode = self.display.keysym_to_keycode(entersym)
         keycodes.append(entercode)
 
         # Allow replaying supported keycodes
-        for sym, codes in self.display._keymap_syms.items():
-            keycode = self.display.keysym_to_keycode(sym)
-            # Valid codes have keysyms from 8 to 255, inclusive
-            if sym >= 8 and sym <= 255 and keycode not in keycodes:
-                keycodes.append(keycode)
+        for codes in self.display._keymap_codes:
+            if codes:
+                # Use keycodes that are modifiable by both Alt and Shift. This avoids replaying
+                # keys that are not properly mappeable to application-level shortcuts (Alt+Tab)
+                # @see https://github.com/python-xlib/python-xlib/blob/0.14/Xlib/display.py#L333-L336
+                keysym = codes[3]
+                keycode = self.display.keysym_to_keycode(keysym)
+                keystr = self.display.lookup_string(keysym)
+                if keystr != None and keycode >= min_keycode and keycode <= max_keycode and keycode not in keycodes:
+                    keycodes.append(keycode)
 
         keycodes.sort()
         return keycodes
