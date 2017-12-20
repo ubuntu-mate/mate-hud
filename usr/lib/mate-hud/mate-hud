@@ -153,10 +153,25 @@ def get_menu(menuKeys):
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
     shortcut = '' if modifiers else ',' + shortcut
 
+    # Calculate display DPI value
+    screen = window.get_screen()
+    scale = window.get_scale_factor()
+
+    def get_dpi(pixels, mm):
+       if mm >= 1:
+          return scale * pixels / (mm / 25.4)
+       else:
+          return 0
+
+    width_dpi = get_dpi(screen.width(), screen.width_mm())
+    height_dpi = get_dpi(screen.height(), screen.height_mm())
+    dpi = scale * (width_dpi + height_dpi) / 2
+
     menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                  '-location', '1',
                                  '-width', '100', '-p', 'HUD: ',
                                  '-lines', '10', '-font', font_name,
+                                 '-dpi', str(dpi),
                                  '-separator-style', 'none',
                                  '-hide-scrollbar',
                                  '-click-to-exit',
