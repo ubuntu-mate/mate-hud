@@ -613,20 +613,27 @@ if __name__ == "__main__":
         tap_timeout = settings.get_int("tap-timeout")
         keybinder.tap_timeout = tap_timeout;
 
-    shortcut = get_shortcut()
+    enabled = False
+    enabled = get_bool('org.mate.hud', None, 'enabled')
 
-    DBusGMainLoop(set_as_default=True)
-    keybinder = GlobalKeyBinding()
-    keybinder.grab(shortcut)
-    keybinder.connect("activate", hud, shortcut, "keystring %s (user data)" % shortcut)
-    keybinder.start()
-    logging.info("Press %s to handle keybinding", shortcut)
+    if enabled:
+        shortcut = get_shortcut()
 
-    settings = Gio.Settings.new("org.mate.hud")
-    settings.connect("changed::shortcut", change_shortcut)
-    settings.connect("changed::tap-timeout", change_tap_timeout)
+        DBusGMainLoop(set_as_default=True)
+        keybinder = GlobalKeyBinding()
+        keybinder.grab(shortcut)
+        keybinder.connect("activate", hud, shortcut, "keystring %s (user data)" % shortcut)
+        keybinder.start()
+        logging.info("Press %s to handle keybinding", shortcut)
 
-    try:
-        GLib.MainLoop().run()
-    except KeyboardInterrupt:
-        GLib.MainLoop().quit()
+        settings = Gio.Settings.new("org.mate.hud")
+        settings.connect("changed::shortcut", change_shortcut)
+        settings.connect("changed::tap-timeout", change_tap_timeout)
+
+        try:
+            GLib.MainLoop().run()
+        except KeyboardInterrupt:
+            GLib.MainLoop().quit()
+    else:
+        logging.info("The HUD is disabled via org.mate.hud in gsettings.")
+

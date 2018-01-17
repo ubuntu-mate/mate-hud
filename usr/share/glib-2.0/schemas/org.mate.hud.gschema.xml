@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.mate.hud" path="/org/mate/hud/">
+    <key type="b" name="enabled">
+      <default>true</default>
+      <summary>Enable MATE HUD.</summary>
+      <description>If true, MATE HUD will run when invoked.</description>
+    </key>
     <key type="s" name="shortcut">
       <default>'Alt_L'</default>
       <summary>The keyboard shortcut used to pop-up the MATE HUD</summary>
