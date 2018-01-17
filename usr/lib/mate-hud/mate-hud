@@ -636,4 +636,3 @@ if __name__ == "__main__":
             GLib.MainLoop().quit()
     else:
         logging.info("The HUD is disabled via org.mate.hud in gsettings.")
-
