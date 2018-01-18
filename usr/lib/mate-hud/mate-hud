@@ -601,9 +601,18 @@ def get_shortcut():
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
     return shortcut
 
+def remove_autostart(filename):
+    config_dir = GLib.get_user_config_dir()
+    autostart_file = os.path.join(config_dir, 'autostart', filename)
+    if os.path.exists(autostart_file):
+        os.remove(autostart_file)
+
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
     logging.basicConfig(level=logging.INFO)
+
+    # Remove old-style autostart .desktop file for mate-hud
+    remove_autostart('mate-hud.desktop')
 
     def change_shortcut(schema, key):
         shortcut = settings.get_string("shortcut")
