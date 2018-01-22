@@ -1,7 +1,8 @@
+[Desktop Entry]
+Type=Application
 Name=MATE HUD
 Exec=/usr/lib/mate-hud/mate-hud
 NoDisplay=true
-AutostartCondition=GSettings org.mate.hud enabled
-X-MATE-Autostart-Phase=Initialization
-X-MATE-Autostart-Notify=false
-X-MATE-AutoRestart=true
+StartupNotify=false
+Terminal=false
+X-MATE-Autostart-Delay=5
