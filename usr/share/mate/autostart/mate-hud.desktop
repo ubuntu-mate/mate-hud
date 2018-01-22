@@ -1,5 +1,5 @@
 Name=MATE HUD
-Exec=/usr/lib/mate-hud/mate-hud.py
+Exec=/usr/lib/mate-hud/mate-hud
 NoDisplay=true
 AutostartCondition=GSettings org.mate.hud enabled
 X-MATE-Autostart-Phase=Initialization
