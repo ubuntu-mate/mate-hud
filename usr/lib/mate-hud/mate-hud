@@ -560,12 +560,18 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         for ignored_mask in self.ignored_masks:
             mod = self.modifiers | ignored_mask
             self.window.grab_key(self.keycode, mod, True, X.GrabModeAsync, X.GrabModeSync, onerror=catch)
+        self.display.flush()
+        if catch.get_error():
+            return False
+
+        catch = error.CatchError(error.BadCursor)
         if not self.modifiers:
            # We grab Alt+click so that we can forward it to the window manager and allow Alt+click bindings (window move, resize, etc.)
            self.window.grab_button(X.AnyButton, X.Mod1Mask, True, X.ButtonPressMask, X.GrabModeSync, X.GrabModeAsync, X.NONE, X.NONE)
         self.display.flush()
         if catch.get_error():
             return False
+
         return True
 
     # Get which window manager we're currently using (Marco, Compiz, Metacity, etc...)
@@ -587,6 +593,8 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         tap_start = 0
         while self.running:
             event = self.display.next_event()
+            if not hasattr(event, 'time'):
+               event.time = 0
 
             if self.modifiers:
                 # Use simpler logic when using traditional combined keybindings
@@ -597,7 +605,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
 
             else:
                # Cancel waiting for the key release if it's not a tap
-               if self.tap_timeout and event.time and event.time - tap_start > self.tap_timeout:
+               if self.tap_timeout and hasattr(event, 'time') and event.time - tap_start > self.tap_timeout:
                   possible_tap = False
 
                # KeyPress, determine if it's the begining of the tap
