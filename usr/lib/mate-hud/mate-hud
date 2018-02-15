@@ -6,6 +6,7 @@ gi.require_version("Gtk", "3.0")
 import dbus
 import logging
 import os
+import psutil
 import setproctitle
 import subprocess
 import sys
@@ -99,6 +100,45 @@ def get_list(schema, path, key):
         settings = Gio.Settings.new(schema)
     return settings.get_strv(key)
 
+def process_running(name):
+    uid = os.getuid()
+    for process in psutil.process_iter():
+        try:
+            proc = process.as_dict(attrs=['name', 'uids'])
+        except psutil.NoSuchProcess:
+            pass
+        else:
+            if name == proc['name'] and uid == proc['uids'].real:
+                return True
+    return False
+
+def kill_process(name):
+    uid = os.getuid()
+    for process in psutil.process_iter():
+        try:
+            proc = process.as_dict(attrs=['name', 'pid', 'uids'])
+        except psutil.NoSuchProcess:
+            pass
+        else:
+            if name == proc['name'] and uid == proc['uids'].real:
+                try:
+                    target = psutil.Process(proc['pid'])
+                    target.kill()
+                except psutil.NoSuchProcess:
+                    pass
+
+def terminate_appmenu_registrar():
+    # TODO:
+    #  - Use Dbus Quit method.
+    #  - Add checks for other Desktop Environments.
+    applet = None
+    if 'MATE' in os.environ['XDG_CURRENT_DESKTOP']:
+        applet = 'appmenu-mate'
+
+    if applet:
+        if process_running('appmenu-registrar') and not process_running(applet):
+            kill_process('appmenu-registrar')
+
 def rgba_to_hex(color):
    """
    Return hexadecimal string for :class:`Gdk.RGBA` `color`.
@@ -169,7 +209,7 @@ def get_menu(menuKeys):
 
     menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
                                  '-location', '1',
-                                 '-width', '100', '-p', 'HUD: ',
+                                 '-width', '100', '-p', 'HUD',
                                  '-lines', '10', '-font', font_name,
                                  '-dpi', str(dpi),
                                  '-separator-style', 'none',
@@ -208,8 +248,10 @@ def try_appmenu_interface(window_id):
     # --- Get dbusmenu object path
     try:
         dbusmenu_bus, dbusmenu_object_path = appmenu_registrar_object_iface.GetMenuForWindow(window_id)
+        terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to get dbusmenu object path.')
+        terminate_appmenu_registrar()
         return
 
     # --- Access dbusmenu items
@@ -219,6 +261,8 @@ def try_appmenu_interface(window_id):
     except ValueError:
         logging.info('Unable to access dbusmenu items.')
         return
+
+    terminate_appmenu_registrar()
 
     dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
     dbusmenu_item_dict = dict()
@@ -284,8 +328,10 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
     try:
         gtk_menu_object = session_bus.get_object(gtk_bus_name, gtk_menu_object_path)
         gtk_menu_menus_iface = dbus.Interface(gtk_menu_object, dbus_interface='org.gtk.Menus')
+        terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to connect with com.gtk.Menus.')
+        terminate_appmenu_registrar()
         return
 
     # Here's the deal: The idea is to reduce the number of calls to the proxy and keep it as low as possible
