@@ -593,8 +593,6 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         tap_start = 0
         while self.running:
             event = self.display.next_event()
-            if not hasattr(event, 'time'):
-               event.time = 0
 
             if self.modifiers:
                 # Use simpler logic when using traditional combined keybindings
@@ -610,7 +608,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
 
                # KeyPress, determine if it's the begining of the tap
                if event.type == X.KeyPress and event.detail == self.keycode and not possible_tap:
-                   tap_start = event.time
+                   tap_start = event.time if hasattr(event, 'time') else 0
                    modifiers = event.state & self.known_modifiers_mask
                    if modifiers == self.modifiers:
                        possible_tap = True
@@ -639,7 +637,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                else:
                    # Replay event if the display supports it as a window-based binding
                    # otherwise send it asynchronously to let the top-level window grab it
-                   if event.detail in self.keycodes:
+                   if hasattr(event, 'detail') and event.detail in self.keycodes:
                        self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
                    else:
                        self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
