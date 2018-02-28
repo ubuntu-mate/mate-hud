@@ -606,49 +606,57 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                 self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
 
             else:
-               # Cancel waiting for the key release if it's not a tap
-               if self.tap_timeout and hasattr(event, 'time') and event.time - tap_start > self.tap_timeout:
-                  possible_tap = False
+                try:
+                    # Cancel waiting for the key release if it's not a tap
+                    if self.tap_timeout and event.time - tap_start > self.tap_timeout:
+                       possible_tap = False
 
-               # KeyPress, determine if it's the begining of the tap
-               if event.type == X.KeyPress and event.detail == self.keycode and not possible_tap:
-                   tap_start = event.time if hasattr(event, 'time') else 0
-                   modifiers = event.state & self.known_modifiers_mask
-                   if modifiers == self.modifiers:
-                       possible_tap = True
-                   self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
+                    # KeyPress, determine if it's the begining of the tap
+                    if event.type == X.KeyPress and event.detail == self.keycode and not possible_tap:
+                        tap_start = event.time
+                        modifiers = event.state & self.known_modifiers_mask
+                        if modifiers == self.modifiers:
+                            possible_tap = True
+                        self.display.allow_events(X.SyncKeyboard, X.CurrentTime)
 
-               # KeyRelease - determine if it's the end of the tap and activate the HUD
-               elif event.type == X.KeyRelease and event.detail == self.keycode and possible_tap:
-                   GLib.idle_add(self.idle)
-                   possible_tap = False
-                   self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+                    # KeyRelease - determine if it's the end of the tap and activate the HUD
+                    elif event.type == X.KeyRelease and event.detail == self.keycode and possible_tap:
+                        GLib.idle_add(self.idle)
+                        possible_tap = False
+                        self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
 
-               # Modifiers are often used with mouse events - don't let the system swallow those
-               elif event.type == X.ButtonPress:
-                   self.display.allow_events(X.ReplayPointer, X.CurrentTime)
-                   # Compiz would rather not have the event sent to it and just read it from the replayed queue
-                   wm = self.get_wm()
-                   if wm != "compiz":
-                       self.display.ungrab_keyboard(X.CurrentTime)
-                       self.display.ungrab_pointer(X.CurrentTime)
-                       query_pointer = self.window.query_pointer()
-                       self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
-                   possible_tap = False
+                    # Modifiers are often used with mouse events - don't let the system swallow those
+                    elif event.type == X.ButtonPress:
+                        self.display.allow_events(X.ReplayPointer, X.CurrentTime)
+                        # Compiz would rather not have the event sent to it and just read it from the replayed queue
+                        wm = self.get_wm()
+                        if wm != "compiz":
+                            self.display.ungrab_keyboard(X.CurrentTime)
+                            self.display.ungrab_pointer(X.CurrentTime)
+                            query_pointer = self.window.query_pointer()
+                            self.display.send_event(query_pointer.child, event, X.ButtonPressMask, True)
+                        possible_tap = False
 
-               # If the user presses another key in between the KeyPress and the KeyRelease, they
-               # meant to use a different shortcut - determine what to do based on the keycode
-               else:
-                   # Replay event if the display supports it as a window-based binding
-                   # otherwise send it asynchronously to let the top-level window grab it
-                   if hasattr(event, 'detail') and event.detail in self.keycodes:
-                       self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
-                   else:
-                       self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+                    # If the user presses another key in between the KeyPress and the KeyRelease, they
+                    # meant to use a different shortcut - determine what to do based on the keycode
+                    else:
+                        # Replay event if the display supports it as a window-based binding
+                        # otherwise send it asynchronously to let the top-level window grab it
+                        if event.detail in self.keycodes:
+                            self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
+                        else:
+                            self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
 
-                   self.display.ungrab_keyboard(X.CurrentTime)
-                   self.display.send_event(event.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
-                   possible_tap = False
+                        self.display.ungrab_keyboard(X.CurrentTime)
+                        self.display.send_event(event.window, event, X.KeyPressMask | X.KeyReleaseMask, True)
+                        possible_tap = False
+
+                except Exception as e:
+                    logging.error('Error processing keybinding: %s' % e)
+                    # Allow keybinding to go through and reset tap state
+                    self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
+                    possible_tap = False
+                    continue
 
     def stop(self):
         self.running = False
