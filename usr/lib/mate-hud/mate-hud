@@ -630,7 +630,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
                         self.display.allow_events(X.ReplayPointer, X.CurrentTime)
                         # Compiz would rather not have the event sent to it and just read it from the replayed queue
                         wm = self.get_wm()
-                        if wm != "compiz":
+                        if wm != b'compiz':
                             self.display.ungrab_keyboard(X.CurrentTime)
                             self.display.ungrab_pointer(X.CurrentTime)
                             query_pointer = self.window.query_pointer()
