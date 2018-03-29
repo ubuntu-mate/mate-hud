@@ -65,7 +65,7 @@ class EWMH:
         return self.display.create_resource_object('window', wId)
 
 def format_path(path):
-    logging.debug('Path:%s', path)
+    #logging.debug('Path:%s', path)
     result = path.replace('>', '', 1)
     result = result.replace('Root > ', '')
     result = result.replace('Label Empty > ', '')
@@ -243,7 +243,7 @@ def try_appmenu_interface(window_id):
         appmenu_registrar_object_iface = dbus.Interface(appmenu_registrar_object, 'com.canonical.AppMenu.Registrar')
     except dbus.exceptions.DBusException:
         logging.info('Unable to register with com.canonical.AppMenu.Registrar.')
-        return
+        return False
 
     # --- Get dbusmenu object path
     try:
@@ -251,8 +251,7 @@ def try_appmenu_interface(window_id):
         terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to get dbusmenu object path.')
-        terminate_appmenu_registrar()
-        return
+        return False
 
     # --- Access dbusmenu items
     try:
@@ -260,9 +259,7 @@ def try_appmenu_interface(window_id):
         dbusmenu_object_iface = dbus.Interface(dbusmenu_object, 'com.canonical.dbusmenu')
     except ValueError:
         logging.info('Unable to access dbusmenu items.')
-        return
-
-    terminate_appmenu_registrar()
+        return False
 
     dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
     dbusmenu_item_dict = dict()
@@ -319,6 +316,8 @@ def try_appmenu_interface(window_id):
         item_id = item[0]
         dbusmenu_object_iface.Event(item_id, "closed", "not used", dbus.UInt32(time.time()))
 
+    return True
+
 """
   try_gtk_interface
 """
@@ -331,7 +330,6 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
         terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to connect with com.gtk.Menus.')
-        terminate_appmenu_registrar()
         return
 
     # Here's the deal: The idea is to reduce the number of calls to the proxy and keep it as low as possible
@@ -446,38 +444,40 @@ def hud(widget, keystr, user_data):
     win = ewmh.getActiveWindow()
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
-    gtk_menu_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
+    gtk_menubar_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
     gtk_win_object_path = ewmh._getProperty('_GTK_WINDOW_OBJECT_PATH', win)
     gtk_unity_object_path = ewmh._getProperty('_UNITY_OBJECT_PATH', win)
 
-    gtk_bus_name, gtk_menu_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path = \
+    gtk_bus_name, gtk_menubar_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path = \
         [i.decode('utf8') if isinstance(i, bytes) \
-        else i for i in [gtk_bus_name, gtk_menu_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
+        else i for i in [gtk_bus_name, gtk_menubar_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
 
     logging.debug('Window id is : %s', window_id)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
-    logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menu_object_path)
-    logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
-    logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menu_object_path)
+    logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menubar_object_path)
     logging.debug('_GTK_APPLICATION_OBJECT_PATH: %s', gtk_app_object_path)
     logging.debug('_GTK_WINDOW_OBJECT_PATH: %s', gtk_win_object_path)
     logging.debug('_UNITY_OBJECT_PATH: %s', gtk_unity_object_path)
 
-    if (not gtk_bus_name) or (not gtk_menu_object_path):
-        logging.debug('Trying AppMenu')
-        try_appmenu_interface(int(window_id, 16))
-    else:
+    logging.debug('Trying AppMenu')
+    appmenu_success = try_appmenu_interface(int(window_id, 16))
+    terminate_appmenu_registrar()
+
+    if not appmenu_success and gtk_menubar_object_path:
+        logging.debug('Appmenu found nothing.')
         # Many apps do not respect menu action groups, such as
         # LibreOffice and gnome-mpv, so we have to include all action
         # groups. Many other apps have these properties point to the
         # same path, so we need to remove them.
         logging.debug('Trying GTK interface')
         gtk_actions_paths_list = list(set([gtk_win_object_path,
-                                  gtk_menu_object_path,
-                                  gtk_app_object_path,
-                                  gtk_unity_object_path]))
-        try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list)
+                                   gtk_menubar_object_path,
+                                   gtk_app_object_path,
+                                   gtk_unity_object_path]))
+        try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
+    else:
+        logging.debug('_GTK_MENUBAR_OBJECT_PATH in None, giving up.')
 
 class GlobalKeyBinding(GObject.GObject, threading.Thread):
     __gsignals__ = {
