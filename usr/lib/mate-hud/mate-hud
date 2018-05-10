@@ -508,7 +508,8 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         # White-list shortcuts used by other MATE programs
         # <Alt>Return opens up file properties
         # <Alt>Up|Left|Right|Home are navigation shortcuts in Caja
-        whitelist = ['Return', 'Up', 'Down', 'Left', 'Right', 'Home']
+        # <Alt>BackSpace is a common shortcut in text editors
+        whitelist = ['Return', 'Up', 'Down', 'Left', 'Right', 'Home', 'BackSpace']
         for key in whitelist:
             sym = Gtk.accelerator_parse(key).accelerator_key
             code = self.display.keysym_to_keycode(sym)
