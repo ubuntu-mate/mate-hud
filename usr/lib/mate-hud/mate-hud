@@ -442,6 +442,9 @@ def hud(widget, keystr, user_data):
     # Get Window properties and GTK MenuModel Bus name
     ewmh = EWMH()
     win = ewmh.getActiveWindow()
+    if win is None:
+        logging.debug('ewmh.getActiveWindow returned None, giving up')
+        return
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menubar_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
