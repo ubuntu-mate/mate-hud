@@ -237,6 +237,7 @@ def get_menu(menuKeys):
 """
 def try_appmenu_interface(window_id):
     # --- Get Appmenu Registrar DBus interface
+    registrar_running = process_running("appmenu-registrar")
     session_bus = dbus.SessionBus()
     try:
         appmenu_registrar_object = session_bus.get_object('com.canonical.AppMenu.Registrar', '/com/canonical/AppMenu/Registrar')
@@ -248,7 +249,8 @@ def try_appmenu_interface(window_id):
     # --- Get dbusmenu object path
     try:
         dbusmenu_bus, dbusmenu_object_path = appmenu_registrar_object_iface.GetMenuForWindow(window_id)
-        terminate_appmenu_registrar()
+        if not registrar_running:
+            terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to get dbusmenu object path.')
         return False
@@ -322,12 +324,14 @@ def try_appmenu_interface(window_id):
   try_gtk_interface
 """
 def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list):
+    registrar_running = process_running("appmenu-registrar")
     session_bus = dbus.SessionBus()
     # --- Ask for menus over DBus --- Credit @1931186
     try:
         gtk_menu_object = session_bus.get_object(gtk_bus_name, gtk_menu_object_path)
         gtk_menu_menus_iface = dbus.Interface(gtk_menu_object, dbus_interface='org.gtk.Menus')
-        terminate_appmenu_registrar()
+        if not registrar_running:
+            terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to connect with com.gtk.Menus.')
         return
@@ -464,8 +468,10 @@ def hud(widget, keystr, user_data):
     logging.debug('_UNITY_OBJECT_PATH: %s', gtk_unity_object_path)
 
     logging.debug('Trying AppMenu')
+    registrar_running = process_running("appmenu-registrar")
     appmenu_success = try_appmenu_interface(int(window_id, 16))
-    terminate_appmenu_registrar()
+    if not registrar_running:
+        terminate_appmenu_registrar()
 
     if not appmenu_success and gtk_menubar_object_path:
         logging.debug('Appmenu found nothing.')
