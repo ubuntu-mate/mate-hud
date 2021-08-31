@@ -1,7 +1,7 @@
 # mate-hud
 
 Provides a way to run menubar commands through
-[rofi](https://davedavenport.github.io/rofi/), much like the Unity 7
+[rofi](https://github.com/davatorium/rofi), much like the Unity 7
 Heads-Up Display (HUD). `mate-hud` was originally forked from
 `i3-hud-menu`:
 
