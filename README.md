@@ -37,7 +37,7 @@ shortcut by default.
 
 `mate-hud.py` reads one gsettings keys:
 
-  * `org.mate.hud`: `shortcut` (Default: <Super>Alt_L)
+  * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
 
 `mate-hud.py` will not execute until those gsettings keys are created,
 which the `mate-hud` Debian package will do, and the `enabled` key
