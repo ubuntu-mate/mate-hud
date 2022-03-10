@@ -138,21 +138,6 @@ def terminate_appmenu_registrar():
         if process_running('appmenu-registrar') and not process_running(applet):
             kill_process('appmenu-registrar')
 
-def rgba_to_hex(color):
-   """
-   Return hexadecimal string for :class:`Gdk.RGBA` `color`.
-   """
-   return "#{0:02x}{1:02x}{2:02x}".format(
-                                    int(color.red   * 255),
-                                    int(color.green * 255),
-                                    int(color.blue  * 255))
-
-def get_color(style_context, preferred_color, fallback_color):
-    color = rgba_to_hex(style_context.lookup_color(preferred_color)[1])
-    if color == '#000000':
-        color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
-    return color
-
 def get_menu(menuKeys):
     """
     Generate menu of available menu items.
@@ -169,23 +154,6 @@ def get_menu(menuKeys):
 
     # Get some colors from the currently selected theme.
     window = Gtk.Window()
-    style_context = window.get_style_context()
-
-    bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
-    fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
-    borders = get_color(style_context, 'borders', 'border_color')
-
-    logging.debug('bg_color: %s', str(bg_color))
-    logging.debug('fg_color: %s', str(fg_color))
-    logging.debug('borders: %s', str(borders))
-
-    selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
-    selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
-    error_bg_color = rgba_to_hex(style_context.lookup_color('error_bg_color')[1])
-    error_fg_color = rgba_to_hex(style_context.lookup_color('error_fg_color')[1])
-    info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
-    info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
-    text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
 
     # Allow closing the HUD with the same modifier key that opens it
     shortcut = get_shortcut()
@@ -219,11 +187,7 @@ def get_menu(menuKeys):
                                  '-kb-cancel', 'Escape' + shortcut,
                                  '-sync', # withhold display until menu entries are ready
                                  '-monitor', '-2', # show in the current application
-                                 '-color-enabled',
-                                 '-color-window', bg_color +", " + borders + ", " + borders,
-                                 '-color-normal', bg_color +", " + fg_color + ", " + bg_color + ", " + selected_bg_color + ", " + selected_fg_color,
-                                 '-color-active', bg_color +", " + fg_color + ", " + bg_color + ", " + info_bg_color + ", " + info_fg_color,
-                                 '-color-urgent', bg_color +", " + fg_color + ", " + bg_color + ", " + error_bg_color + ", " + error_fg_color],
+                                 '-theme', 'docu'],
                                  stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
     menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
