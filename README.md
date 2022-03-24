@@ -35,14 +35,26 @@ shortcut by default.
 
 ### Gsettings
 
-`mate-hud.py` reads one gsettings keys:
+`mate-hud.py` reads two gsettings keys:
 
   * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
+  * `org.mate.hud`: `rofi-theme` (Default: `docu`)
 
 `mate-hud.py` will not execute until those gsettings keys are created,
 which the `mate-hud` Debian package will do, and the `enabled` key
 is set to *True* using something like `dconf-editor`. MATE Tweak
 will soon add the functionality the endable/disable `mate-hud`.
+
+### Themes
+
+`mate-hud.py` uses the `docu` theme by default. You can see the available
+rofi themes in `/usr/share/rofi/themes` or add your own to `~/.local/share/rofi/themes`
+Theme files are named `<theme name>.rasi` and you can change the theme using
+the following command:
+
+```
+gsettings set org.mate.hud rofi-theme <theme name>
+```
 
 ### Manual Setup
 
