@@ -8,7 +8,7 @@
 configuration {
 
 	font: "Sans Regular 10";
-	width: 30;
+	width: 400px;
 	line-margin: 10;
 	lines: 6;
 	columns: 2;

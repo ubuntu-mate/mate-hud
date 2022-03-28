@@ -206,7 +206,8 @@ def get_menu(menuKeys):
            '-sync', # withhold display until menu entries are ready
            '-monitor', '-2', # show in the current application
            '-theme', rofi_theme,
-           '-theme-str', 'window { location: north west; }' ] # Override the window location to the top left of the current window
+           '-theme-str', 'window { location: north west; ' + \
+                         '         anchor: north west; }' ] # Override the window location to the top left of the current window
 
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
