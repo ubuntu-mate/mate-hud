@@ -43,6 +43,8 @@ data_files = [
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/mate-hud']),
     ('{prefix}/share/mate/autostart/'.format(prefix=sys.prefix), ['usr/share/mate/autostart/mate-hud.desktop']),
     ('{prefix}/share/glib-2.0/schemas/'.format(prefix=sys.prefix), ['usr/share/glib-2.0/schemas/org.mate.hud.gschema.xml']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
 ]
 
 cmdclass = {

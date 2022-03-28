@@ -15,11 +15,12 @@
       </description>
     </key>
     <key type="s" name="rofi-theme">
-      <default>'docu'</default>
+      <default>'mate-hud'</default>
       <summary>The rofi theme to use for the HUD</summary>
       <description>
         Mate HUD uses rofi to display the HUD. Specify the rofi theme to use here.
-        Find available themes in /usr/share/rofi/themes
+        'mate-hud' and 'mate-hud-rounded' try to pull colors from the GTK theme.
+        Find available themes in /usr/share/rofi/themes or put your own in ~/.local/share/rofi/themes
       </description>
     </key>
     <key type="i" name="tap-timeout">
