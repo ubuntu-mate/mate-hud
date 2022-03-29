@@ -194,7 +194,7 @@ def get_menu(menuKeys):
 
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
-           '-width', '100', '-p', 'HUD',
+           '-p', 'HUD',
            '-lines', '10', '-font', font_name,
            '-dpi', str(dpi),
            '-separator-style', 'none',

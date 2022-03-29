@@ -8,7 +8,6 @@
 configuration {
 
 	font: "Sans Regular 10";
-	width: 400px;
 	line-margin: 10;
 	lines: 6;
 	columns: 2;
@@ -29,6 +28,7 @@ configuration {
 window {
     location: north west;
     anchor:   north west;
+	width: 400px;
     transparency: "screenshot";
     //padding: 10px;
     border:  0px;
