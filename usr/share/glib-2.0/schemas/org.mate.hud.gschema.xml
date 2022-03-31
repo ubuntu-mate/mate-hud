@@ -15,10 +15,10 @@
       </description>
     </key>
     <key type="s" name="rofi-theme">
-      <default>'mate-hud'</default>
+      <default>'mate-hud-rounded'</default>
       <summary>The rofi theme to use for the HUD</summary>
       <description>
-        Mate HUD uses rofi to display the HUD. Specify the rofi theme to use here.
+        MATE HUD uses rofi to display the HUD. Specify the rofi theme to use here.
         'mate-hud' and 'mate-hud-rounded' try to pull colors from the GTK theme.
         Find available themes in /usr/share/rofi/themes or put your own in ~/.local/share/rofi/themes
       </description>
