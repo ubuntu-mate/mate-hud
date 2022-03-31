@@ -9,6 +9,7 @@ import os
 import psutil
 import setproctitle
 import subprocess
+import sys
 import time
 import threading
 from dbus.mainloop.glib import DBusGMainLoop
@@ -138,6 +139,21 @@ def terminate_appmenu_registrar():
         if process_running('appmenu-registrar') and not process_running(applet):
             kill_process('appmenu-registrar')
 
+def rgba_to_hex(color):
+   """
+   Return hexadecimal string for :class:`Gdk.RGBA` `color`.
+   """
+   return "#{0:02x}{1:02x}{2:02x}".format(
+                                    int(color.red   * 255),
+                                    int(color.green * 255),
+                                    int(color.blue  * 255))
+
+def get_color(style_context, preferred_color, fallback_color):
+    color = rgba_to_hex(style_context.lookup_color(preferred_color)[1])
+    if color == '#000000':
+        color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
+    return color
+
 def get_menu(menuKeys):
     """
     Generate menu of available menu items.
@@ -174,21 +190,60 @@ def get_menu(menuKeys):
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
 
-    menu_cmd = subprocess.Popen(['rofi', '-dmenu', '-i',
-                                 '-location', '1',
-                                 '-width', '100', '-p', 'HUD',
-                                 '-lines', '10', '-font', font_name,
-                                 '-dpi', str(dpi),
-                                 '-separator-style', 'none',
-                                 '-hide-scrollbar',
-                                 '-click-to-exit',
-                                 '-levenshtein-sort',
-                                 '-line-padding', '2',
-                                 '-kb-cancel', 'Escape' + shortcut,
-                                 '-sync', # withhold display until menu entries are ready
-                                 '-monitor', '-2', # show in the current application
-                                 '-theme', get_rofi_theme()],
-                                 stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    theme_options = 'window { location: northwest;'
+
+    rofi_theme = get_rofi_theme()
+    cmd = ['rofi', '-dmenu', '-i',
+           '-p', 'HUD',
+           '-lines', '10',
+           '-dpi', str(dpi),
+           '-separator-style', 'none',
+           '-hide-scrollbar',
+           '-click-to-exit',
+           '-levenshtein-sort',
+           '-line-padding', '2',
+           '-kb-cancel', 'Escape' + shortcut,
+           '-sync', # withhold display until menu entries are ready
+           '-monitor', '-2', # show in the current application
+           '-theme', rofi_theme,
+           '-theme-str', 'window { location: north west; ' + \
+                         '         anchor: north west; }' ] # Override the window location to the top left of the current window
+
+    # If we use the default adaptive theme, we need to pull in some
+    # color information from the GTK theme
+    if rofi_theme == 'mate-hud' or rofi_theme == 'mate-hud-rounded' :
+        window = Gtk.Window()
+        style_context = window.get_style_context()
+
+        bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
+        fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
+        #borders = get_color(style_context, 'borders', 'border_color')
+
+        logging.debug('bg_color: %s', str(bg_color))
+        logging.debug('fg_color: %s', str(fg_color))
+        #logging.debug('borders: %s', str(borders))
+
+        selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
+        selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
+        #error_bg_color = rgba_to_hex(style_context.lookup_color('error_bg_color')[1])
+        #error_fg_color = rgba_to_hex(style_context.lookup_color('error_fg_color')[1])
+        #info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
+        #info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
+        #text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
+        
+        # Overwrite some of the theme options
+        theme_options = '* { font: "' + font_name + '"; } ' + \
+                        'listview { background-color: ' + bg_color + '; ' + \
+                        '           border-color: ' + selected_bg_color + '; } ' + \
+                        'element { text-color: ' + fg_color + '; } ' + \
+                        'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
+                        '                           text-color: ' + selected_fg_color + '; } ' + \
+                        'inputbar { background-color: ' + bg_color + '; ' + \
+                        '            border-color: ' + selected_bg_color + '; ' + \
+                        '            text-color: ' + fg_color + '; } '
+        cmd += [ '-theme-str', theme_options ]
+
+    menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
     menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
     menu_cmd.stdin.close()

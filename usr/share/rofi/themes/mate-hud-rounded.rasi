@@ -1,0 +1,97 @@
+/**
+ * Mate-hud-rounded rofi theme (rounded corners)
+ * Incomplete theme designed to have certain properties applied at mate-hud runtime
+ * Don't use this for anything else than mate-hud
+ * Adapted by twa022 <twa022 at gmail dot com>
+ */
+
+configuration {
+
+    font: "Sans Regular 10";
+    line-margin: 10;
+    lines: 6;
+    columns: 2;
+
+    display-ssh:    "";
+    display-run:    "";
+    display-drun:   "";
+    display-window: "";
+    display-combi:  "";
+    show-icons:     true;
+}
+
+* {
+    backlight:   #ccffeedd;
+    background-color:  transparent;
+}
+
+window {
+    location: north west;
+    anchor:   north west;
+    width: 400px;
+    transparency: "screenshot";
+    //padding: 10px;
+    border:  0px;
+    border-radius: 6px;
+
+    /* background-color: matched to GTK theme by mate-hud */
+    spacing: 0;
+    children:  [mainbox];
+    orientation: horizontal;
+
+    // margin: 33px 5px;
+
+    font: "Sans Regular 10";
+}
+
+mainbox {
+    spacing: 0;
+    children: [ inputbar, message, listview ];
+}
+
+inputbar {
+    /* text-color: matched to GTK theme by mate-hud */
+    padding: 11px;
+    /* background-color: matched to GTK theme by mate-hud */
+
+    border: 1px;
+    border-radius:  6px 6px 0px 0px;
+    /* border-color: matched to GTK theme by mate-hud */
+}
+
+entry, prompt, case-indicator {
+    text-font: inherit;
+    text-color:inherit;
+}
+
+prompt {
+    margin: 0px 0.3em 0em 0em ;
+}
+
+listview {
+    padding: 8px;
+    border-radius: 0px 0px 6px 6px;
+    /* border-color: matched to GTK theme by mate-hud */
+    border: 0px 1px 1px 1px;
+    /* background-color: matched to GTK theme by mate-hud */
+    dynamic: false;
+    font: "Sans Regular 10";
+}
+
+element {
+    padding: 3px;
+    vertical-align: 0.5;
+    border-radius: 4px;
+    background-color: transparent;
+    /* text-color: matched to GTK theme by mate-hud */
+}
+
+element selected.normal {
+    /* background-color: matched to GTK theme by mate-hud */
+    /* text-color: matched to GTK theme by mate-hud */
+}
+
+element-text, element-icon {
+    background-color: inherit;
+    text-color:       inherit;
+}
