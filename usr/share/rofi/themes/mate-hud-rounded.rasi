@@ -1,5 +1,5 @@
 /**
- * Mate-hud-rounded rofi theme (rounded corners)
+ * mate-hud-rounded rofi theme (rounded corners)
  * Incomplete theme designed to have certain properties applied at mate-hud runtime
  * Don't use this for anything else than mate-hud
  * Adapted by twa022 <twa022 at gmail dot com>
@@ -39,7 +39,7 @@ window {
     children:  [mainbox];
     orientation: horizontal;
 
-    // margin: 33px 5px;
+    margin: 12px 12px;
 
     font: "Sans Regular 10";
 }
