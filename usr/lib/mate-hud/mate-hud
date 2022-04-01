@@ -16,7 +16,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Gio, GLib, Gtk, Gdk, GObject
 from Xlib import display, protocol, X, Xatom, error
 
-if 'XFCE' in os.getenv('XDG_CURRENT_DESKTOP'):
+if 'XFCE' in os.environ['XDG_CURRENT_DESKTOP']:
     try:
         gi.require_version("Xfconf", "0")
         from gi.repository import Xfconf
@@ -194,7 +194,7 @@ def get_menu(menuKeys):
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
     shortcut = '' if modifiers else ',' + shortcut
 
-    desktop_name = os.getenv('XDG_CURRENT_DESKTOP')
+    desktop_name = os.environ['XDG_CURRENT_DESKTOP']
 
     # Calculate display DPI value
     screen = window.get_screen()
