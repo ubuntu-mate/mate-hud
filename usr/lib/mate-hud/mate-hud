@@ -197,6 +197,15 @@ def get_menu(menuKeys):
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
 
+    if 'XFCE' in desktop_name:
+        xfce_custom_dpi = 0
+        try:
+            xfce_custom_dpi = Xfconf.Channel.new_with_property_base("xsettings", "/Xft").get_int("/DPI", 0)
+        except:
+            logging.debug('running XFCE, but xfconf gi repository not available')
+        if xfce_custom_dpi > 0:
+            dpi = xfce_custom_dpi
+
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
            '-p', 'HUD',
