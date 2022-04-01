@@ -16,6 +16,14 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Gio, GLib, Gtk, Gdk, GObject
 from Xlib import display, protocol, X, Xatom, error
 
+if 'XFCE' in os.getenv('XDG_CURRENT_DESKTOP'):
+    try:
+        gi.require_version("Xfconf", "0")
+        from gi.repository import Xfconf
+        Xfconf.init()
+    except:
+        logging.debug('running XFCE, but xfconf gi repository not available')
+
 class EWMH:
     """This class provides the ability to get and set properties defined
     by the EWMH spec. It was blanty ripped out of pyewmh
@@ -165,9 +173,6 @@ def get_menu(menuKeys):
     for menu_item in menu_items:
         menu_string += '\n' + menu_item
 
-    # Get the currently active font.
-    font_name = get_string('org.mate.interface', None, 'font-name')
-
     # Get some colors from the currently selected theme.
     window = Gtk.Window()
 
@@ -175,6 +180,8 @@ def get_menu(menuKeys):
     shortcut = get_shortcut()
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
     shortcut = '' if modifiers else ',' + shortcut
+
+    desktop_name = os.getenv('XDG_CURRENT_DESKTOP')
 
     # Calculate display DPI value
     screen = window.get_screen()
@@ -189,8 +196,6 @@ def get_menu(menuKeys):
     width_dpi = get_dpi(screen.width(), screen.width_mm())
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
-
-    theme_options = 'window { location: northwest;'
 
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
@@ -212,6 +217,22 @@ def get_menu(menuKeys):
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
     if rofi_theme == 'mate-hud' or rofi_theme == 'mate-hud-rounded' :
+        # Get the currently active font.
+        font_name = ''
+        if 'MATE' in desktop_name:
+            font_name = get_string('org.mate.interface', None, 'font-name')
+        elif 'XFCE' in desktop_name:
+            try:
+                font_name = Xfconf.Channel.new_with_property_base("xsettings", "/Gtk").get_string("/FontName", "")
+            except:
+                logging.debug('running XFCE, but xfconf gi repository not available')
+        elif 'X-Cinnamon' in desktop_name:
+            font_name = get_string('org.cinnamon.desktop.interface', None, 'font-name')
+        elif 'Budgie:GNOME' in desktop_name:
+            font_name = get_string('org.gnome.desktop.interface', None, 'font-name')
+        if font_name:
+            cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
+
         window = Gtk.Window()
         style_context = window.get_style_context()
 
@@ -232,8 +253,7 @@ def get_menu(menuKeys):
         #text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
         
         # Overwrite some of the theme options
-        theme_options = '* { font: "' + font_name + '"; } ' + \
-                        'listview { background-color: ' + bg_color + '; ' + \
+        theme_options = 'listview { background-color: ' + bg_color + '; ' + \
                         '           border-color: ' + selected_bg_color + '; } ' + \
                         'element { text-color: ' + fg_color + '; } ' + \
                         'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
