@@ -139,11 +139,10 @@ def terminate_appmenu_registrar():
     # TODO:
     #  - Use Dbus Quit method.
     #  - Add checks for other Desktop Environments.
-    desktop_name = os.environ['XDG_CURRENT_DESKTOP']
-    if 'MATE' in desktop_name:
+    if 'MATE' in os.environ['XDG_CURRENT_DESKTOP']:
         if process_running('appmenu-registrar') and not process_running('applet-mate'):
             kill_process('appmenu-registrar')
-    elif 'XFCE' in desktop_name:
+    elif process_running('xfce4-panel'):
         try:
             xfc_panel = Xfconf.Channel.new("xfce4-panel")
             panels = xfc_panel.get_arrayv("/panels")
@@ -158,7 +157,7 @@ def terminate_appmenu_registrar():
             if process_running('appmenu-registrar') and not appmenu_loaded:
                 kill_process('appmenu-registrar')
         except:
-            logging.debug('running XFCE, but xfconf gi repository not available')
+            logging.debug('running XFCE panel, but xfconf gi repository not available')
 
 def rgba_to_hex(color):
    """
