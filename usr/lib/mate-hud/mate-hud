@@ -140,7 +140,7 @@ def terminate_appmenu_registrar():
     #  - Use Dbus Quit method.
     #  - Add checks for other Desktop Environments.
     if 'MATE' in os.environ['XDG_CURRENT_DESKTOP']:
-        if process_running('appmenu-registrar') and not process_running('applet-mate'):
+        if process_running('appmenu-registrar') and not process_running('appmenu-mate'):
             kill_process('appmenu-registrar')
     elif process_running('xfce4-panel'):
         try:
