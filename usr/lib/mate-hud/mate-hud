@@ -229,7 +229,7 @@ def get_menu(menuKeys):
         except:
             logging.debug('running XFCE, but xfconf gi repository not available')
         if xfce_custom_dpi > 0:
-            dpi = xfce_custom_dpi
+            dpi = round( xfce_custom_dpi * scale )
 
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
@@ -296,6 +296,10 @@ def get_menu(menuKeys):
                         '            border-color: ' + selected_bg_color + '; ' + \
                         '            text-color: ' + fg_color + '; } '
         cmd += [ '-theme-str', theme_options ]
+
+        # Try to handle HiDPI scaling
+        if scale > 1:
+            cmd += [ '-theme-str', 'window { width: ' + str( round( scale * 400 ) ) + 'px; } ' ]
 
     menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
