@@ -222,15 +222,6 @@ def get_menu(menuKeys):
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
 
-    if 'XFCE' in desktop_name:
-        xfce_custom_dpi = 0
-        try:
-            xfce_custom_dpi = Xfconf.Channel.new_with_property_base("xsettings", "/Xft").get_int("/DPI", 0)
-        except:
-            logging.debug('running XFCE, but xfconf gi repository not available')
-        if xfce_custom_dpi > 0:
-            dpi = round( xfce_custom_dpi * scale )
-
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
            '-p', 'HUD',
@@ -253,17 +244,27 @@ def get_menu(menuKeys):
     if rofi_theme == 'mate-hud' or rofi_theme == 'mate-hud-rounded' :
         # Get the currently active font.
         font_name = ''
+        font_dpi_def = 96
+        font_dpi = font_dpi_def
         if 'MATE' in desktop_name:
             font_name = get_string('org.mate.interface', None, 'font-name')
+            font_dpi = get_number('org.mate.font-rendering', 'None', 'dpi')
         elif 'XFCE' in desktop_name:
             try:
                 font_name = Xfconf.Channel.new_with_property_base("xsettings", "/Gtk").get_string("/FontName", "")
+                font_dpi = Xfconf.Channel.new_with_property_base("xsettings", "/Xft").get_int("/DPI", 0)
             except:
                 logging.debug('running XFCE, but xfconf gi repository not available')
         elif 'X-Cinnamon' in desktop_name:
             font_name = get_string('org.cinnamon.desktop.interface', None, 'font-name')
         elif 'Budgie:GNOME' in desktop_name:
             font_name = get_string('org.gnome.desktop.interface', None, 'font-name')
+        font_scale = font_dpi / font_dpi_def
+        if not font_scale == 1:
+            f = font_name.split()
+            f[-1] = str( float(f[-1]) * font_scale )
+            font_name = ' '.join(f)
+
         if font_name:
             cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
 
