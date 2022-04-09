@@ -222,14 +222,21 @@ def get_menu(menuKeys):
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
 
-    if 'XFCE' in desktop_name:
-        xfce_custom_dpi = 0
-        try:
-            xfce_custom_dpi = Xfconf.Channel.new_with_property_base("xsettings", "/Xft").get_int("/DPI", 0)
-        except:
-            logging.debug('running XFCE, but xfconf gi repository not available')
-        if xfce_custom_dpi > 0:
-            dpi = xfce_custom_dpi
+    # from pyxr: https://github.com/WhatNodyn/Pyxr (MIT license)
+    # Get the xresource db so we can read Xft.dpi
+    res_prop = display.Display().screen().root.get_full_property(Xatom.RESOURCE_MANAGER, Xatom.STRING)
+    res_kv = (line.split(':', 1) for line in res_prop.value.decode().split('\n'))
+    res_dict = {kv[0]: kv[1].strip() for kv in res_kv if len(kv) == 2}
+    font_scale_factor=1
+    try:
+        # Is there a function to get this?
+        font_scale_factor=float( os.environ['GDK_DPI_SCALE'] )
+    except:
+        pass
+    try:
+        dpi = int( res_dict['Xft.dpi'] ) * scale * font_scale_factor
+    except:
+        pass
 
     rofi_theme = get_rofi_theme()
     cmd = ['rofi', '-dmenu', '-i',
@@ -296,6 +303,9 @@ def get_menu(menuKeys):
                         '            border-color: ' + selected_bg_color + '; ' + \
                         '            text-color: ' + fg_color + '; } '
         cmd += [ '-theme-str', theme_options ]
+        # scale the rofi window width on HiDPI
+        if not scale == 1:
+            cmd += [ '-theme-str', 'window { width: ' + str( scale * 400 ) + 'px; } ' ]
 
     menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
