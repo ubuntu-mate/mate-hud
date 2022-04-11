@@ -58,7 +58,7 @@ setup(
     description = "Run menubar commands, much like the Unity 7 HUD",
     license = 'GPLv2+',
     author = 'Martin Wimpress',
-    url = 'https://bitbucket.org/ubuntu-mate/mate-hud/',
+    url = 'https://github.com/ubuntu-mate/mate-hud/',
     #package_dir = {'': '.'},
     data_files = data_files,
     install_requires = ['setuptools'],
