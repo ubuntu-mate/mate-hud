@@ -556,7 +556,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
     def __init__(self):
         GObject.GObject.__init__(self)
         threading.Thread.__init__(self)
-        self.setDaemon(True)
+        self.daemon = True
 
         self.display = display.Display()
         self.screen = self.display.screen()
