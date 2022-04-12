@@ -211,7 +211,16 @@ def get_menu(menuKeys):
     # Calculate display DPI value
     screen = window.get_screen()
     scale = window.get_scale_factor()
-    dpi = scale * screen.get_resolution()
+
+    def get_dpi(pixels, mm):
+       if mm >= 1:
+          return scale * pixels / (mm / 25.4)
+       else:
+          return 0
+
+    width_dpi = get_dpi(screen.width(), screen.width_mm())
+    height_dpi = get_dpi(screen.height(), screen.height_mm())
+    dpi = scale * (width_dpi + height_dpi) / 2
 
     rofi_theme = get_rofi_theme()
     mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
