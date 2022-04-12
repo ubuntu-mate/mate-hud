@@ -208,7 +208,7 @@ def terminate_appmenu_registrar():
                     break
             except:
                 pass
-    if not appmenu_loaded and 'Budgie:GNOME' in os.getenv('XDG_SESSION_DESKTOP'):
+    if not appmenu_loaded and 'Budgie:GNOME' in get_desktop_env():
         # Haven't figured out where to look yet because my Budgie session is messed up
         # so assume it's loaded so we don't kill it in error
         appmenu_loaded = True
