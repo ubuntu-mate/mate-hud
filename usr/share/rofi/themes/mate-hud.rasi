@@ -8,9 +8,6 @@
 configuration {
 
     font: "Sans Regular 10";
-    line-margin: 10;
-    lines: 6;
-    columns: 2;
 
     display-ssh:    "";
     display-run:    "";
