@@ -3,6 +3,7 @@
 import gi
 gi.require_version("Gtk", "3.0")
 
+import configparser
 import dbus
 import logging
 import os
@@ -133,6 +134,18 @@ def process_running(name):
                 return True
     return False
 
+def process_get_cmdline(name):
+    uid = os.getuid()
+    for process in psutil.process_iter():
+        try:
+            proc = process.as_dict(attrs=['name', 'cmdline', 'uids'])
+        except psutil.NoSuchProcess:
+            pass
+        else:
+            if name == proc['name'] and uid == proc['uids'].real:
+                return proc['cmdline']
+    return []
+
 def kill_process(name):
     uid = os.getuid()
     for process in psutil.process_iter():
@@ -152,25 +165,56 @@ def terminate_appmenu_registrar():
     # TODO:
     #  - Use Dbus Quit method.
     #  - Add checks for other Desktop Environments.
+    appmenu_loaded = False
     if 'MATE' in get_desktop_env():
-        if process_running('appmenu-registrar') and not process_running('appmenu-mate'):
-            kill_process('appmenu-registrar')
-    elif process_running('xfce4-panel'):
+        appmenu_loaded =  process_running('appmenu-mate')
+    if not appmenu_loaded and process_running('xfce4-panel'):
         try:
             xfc_panel = Xfconf.Channel.new("xfce4-panel")
             panels = xfc_panel.get_arrayv("/panels")
             plugin_ids = []
             for panel in panels:
                 plugin_ids += xfc_panel.get_arrayv("/panels/panel-" + str(panel) + "/plugin-ids")
-            appmenu_loaded = False
             for plugid in plugin_ids:
                 if ( xfc_panel.get_string("/plugins/plugin-" + str(plugid), "") == 'appmenu' ):
                     appmenu_loaded = True
                     break
-            if process_running('appmenu-registrar') and not appmenu_loaded:
-                kill_process('appmenu-registrar')
         except:
             logging.debug('running XFCE panel, but xfconf gi repository not available')
+    cmdline = process_cmdline( 'vala-panel' )
+    if not appmenu_loaded and cmdline:
+        profile = 'default'
+        try:
+            profile = cmdline[cmdline.index('-p') + 1]
+        except:
+            pass #if not specified, default profile is used
+
+        config = configparser.ConfigParser()
+        confdir = os.getenv('XDG_CONFIG_HOME') or os.path.expanduser('~') + '/.config'
+        xdgconfdirs = os.getenv('XDG_CONFIG_DIRS').split(':')
+        if not confdir in xdgconfdirs:
+            xdgconfdirs.insert( 0, confdir )
+        for d in xdgconfdirs:
+            if os.path.isfile( d + '/vala-panel/' + profile ):
+                config.read( d + '/vala-panel/' + profile )
+                break
+        # List of the plugins in the loaded config (each item will be single-quoted
+        plugins = config.get('core-version-1', 'units').strip("][").split(', ')
+
+        for p in plugins:
+            try:
+                if config[p[1:-1]]['plugin-type'] == "'org.valapanel.appmenu'":
+                    appmenu_loaded = True
+                    break
+            except:
+                pass
+    if not appmenu_loaded and 'Budgie:GNOME' in os.getenv('XDG_SESSION_DESKTOP'):
+        # Haven't figured out where to look yet because my Budgie session is messed up
+        # so assume it's loaded so we don't kill it in error
+        appmenu_loaded = True
+
+    if process_running('appmenu-registrar') and not appmenu_loaded:
+        kill_process('appmenu-registrar')
 
 def rgba_to_hex(color):
    """
