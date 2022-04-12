@@ -18,26 +18,12 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Gio, GLib, Gtk, Gdk, GObject
 from Xlib import display, protocol, X, Xatom, error
 
-def get_desktop_env():
-    desktop_env = ''
-    try:
-        desktop_env = os.environ['XDG_CURRENT_DESKTOP']
-    except:
-        pass
-    if not desktop_env:
-        try:
-            desktop_env = os.environ['XDG_SESSION_DESKTOP']
-        except:
-            pass
-    return desktop_env
-
-if 'XFCE' in get_desktop_env():
-    try:
-        gi.require_version("Xfconf", "0")
-        from gi.repository import Xfconf
-        Xfconf.init()
-    except:
-        logging.debug('running XFCE, but xfconf gi repository not available')
+try:
+    gi.require_version("Xfconf", "0")
+    from gi.repository import Xfconf
+    Xfconf.init()
+except:
+    logging.debug('Xfconf gi repository not available')
 
 class EWMH:
     """This class provides the ability to get and set properties defined
@@ -122,6 +108,19 @@ def get_list(schema, path, key):
     else:
         settings = Gio.Settings.new(schema)
     return settings.get_strv(key)
+
+def get_desktop_env():
+    desktop_env = ''
+    try:
+        desktop_env = os.environ['XDG_CURRENT_DESKTOP']
+    except:
+        pass
+    if not desktop_env:
+        try:
+            desktop_env = os.environ['XDG_SESSION_DESKTOP']
+        except:
+            pass
+    return desktop_env
 
 def process_running(name):
     uid = os.getuid()
