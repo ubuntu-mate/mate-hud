@@ -29,7 +29,6 @@ window {
     transparency: "screenshot";
     //padding: 10px;
     border:  0px;
-    //border-radius: 6px;
 
     /* background-color: matched to GTK theme by mate-hud */
     spacing: 0;
@@ -67,7 +66,6 @@ prompt {
 
 listview {
     padding: 8px;
-    //border-radius: 0px 0px 6px 6px;
     /* border-color: matched to GTK theme by mate-hud */
     border: 0px 1px 1px 1px;
     /* background-color: matched to GTK theme by mate-hud */
@@ -78,7 +76,6 @@ listview {
 element {
     padding: 3px 0px;
     vertical-align: 0.5;
-    //border-radius: 4px;
     background-color: transparent;
     /* text-color: matched to GTK theme by mate-hud */
 }
