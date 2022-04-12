@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
+  <enum id="org.mate.hud.monitor">
+    <value value="0" nick="window"/>
+    <value value="1" nick="monitor"/>
+  </enum>
   <schema id="org.mate.hud" path="/org/mate/hud/">
     <key type="b" name="enabled">
       <default>true</default>
@@ -21,6 +25,13 @@
         MATE HUD uses rofi to display the HUD. Specify the rofi theme to use here.
         'mate-hud' and 'mate-hud-rounded' try to pull colors from the GTK theme.
         Find available themes in /usr/share/rofi/themes or put your own in ~/.local/share/rofi/themes
+      </description>
+    </key>
+    <key name="hud-monitor" enum="org.mate.hud.monitor">
+      <default>'window'</default>
+      <summary>Whether to pin the HUD to the monitor or to the current window</summary>
+      <description>
+        Whether to pin the HUD to the monitor or to the current window
       </description>
     </key>
     <key type="i" name="tap-timeout">

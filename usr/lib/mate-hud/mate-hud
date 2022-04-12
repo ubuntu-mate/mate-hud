@@ -8,6 +8,7 @@ import dbus
 import logging
 import os
 import psutil
+import re
 import setproctitle
 import subprocess
 import sys
@@ -287,10 +288,47 @@ def get_menu(menuKeys):
            '-line-padding', '2',
            '-kb-cancel', 'Escape' + shortcut,
            '-sync', # withhold display until menu entries are ready
-           '-monitor', '-2', # show in the current application
+           '-monitor', get_monitor(), # show in the current application
            '-theme', rofi_theme,
            '-theme-str', 'window { location: north west; ' + \
                          '         anchor: north west; }' ] # Override the window location to the top left of the current window
+
+    if get_monitor() == '-1':
+        margin = [ 0, 0 ]
+        if process_running('xfce4-panel'):
+            pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
+            orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
+            try:
+                xfc_panel = Xfconf.Channel.new("xfce4-panel")
+                panels = xfc_panel.get_arrayv("/panels")
+                for panel in panels:
+                    _pos = xfc_panel.get_string("/panels/panel-" + str(panel) + "/position", "p=0;x=0;y=0") #.split(';=')
+                    pos = re.split(r'[;=]', _pos ) #pos.split(';\=')
+                    # [ 'p', p, 'x', x, 'y', y ]
+                    edge = int( pos[1] )
+                    mode = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/mode", 0 )
+                    if mode in orientation.get('vertical') and edge in pos_nm.get('left'):
+                        x = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                        if x > margin[0]:
+                            margin[0] = x
+                    if mode in orientation.get('horizontal') and edge in pos_nm.get('top'):
+                        y = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                        if y > margin[1]:
+                            margin[1] = y
+            except:
+                debug.logging('Problem accessing xfconf')
+        elif 'MATE' in get_desktop_env():
+            panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
+            for p in panels:
+                size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
+                orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
+                if orientation == 'left' and size > margin[0]:
+                    margin[0] = size
+                if orientation == 'top' and size > margin[1]:
+                    margin[1] = size
+
+        if margin[0] > 0 or margin[1] > 0:
+            cmd += [ '-theme-str', 'window { margin: ' + str(margin[1]) + 'px ' + str(margin[0]) + 'px; } ' ]
 
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
@@ -813,6 +851,16 @@ def get_rofi_theme():
     except:
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % rofi_theme)
     return rofi_theme
+
+def get_monitor():
+    monitors = { 'window': '-2', 'monitor': '-1' }
+    default = 'window'
+    monitor = monitors[default]
+    try:
+        monitor = monitors[get_string('org.mate.hud', None, 'hud-monitor')]
+    except:
+        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % default)
+    return str(monitor)
 
 def remove_autostart(filename):
     config_dir = GLib.get_user_config_dir()
