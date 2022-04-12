@@ -9,7 +9,6 @@ import os
 import psutil
 import setproctitle
 import subprocess
-import sys
 import time
 import threading
 from dbus.mainloop.glib import DBusGMainLoop
