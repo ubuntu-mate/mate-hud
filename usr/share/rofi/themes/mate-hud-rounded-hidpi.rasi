@@ -1,0 +1,96 @@
+/**
+ * mate-hud-rounded rofi theme (rounded corners)
+ * Incomplete theme designed to have certain properties applied at mate-hud runtime
+ * Don't use this for anything else than mate-hud
+ * Adapted by twa022 <twa022 at gmail dot com>
+ */
+
+configuration {
+
+    font: "Sans Regular 10";
+    line-margin: 10;
+    lines: 6;
+    columns: 2;
+
+    display-ssh:    "";
+    display-run:    "";
+    display-drun:   "";
+    display-window: "";
+    display-combi:  "";
+    show-icons:     true;
+}
+
+* {
+    backlight:   #ccffeedd;
+    background-color:  transparent;
+}
+
+window {
+    location: north west;
+    anchor:   north west;
+    width: 800px;
+    transparency: "screenshot";
+    border:  0px;
+    border-radius: 12px;
+
+    /* background-color: matched to GTK theme by mate-hud */
+    spacing: 0;
+    children:  [mainbox];
+    orientation: horizontal;
+
+    margin: 24px 24px;
+
+    font: "Sans Regular 10";
+}
+
+mainbox {
+    spacing: 0;
+    children: [ inputbar, message, listview ];
+}
+
+inputbar {
+    /* text-color: matched to GTK theme by mate-hud */
+    padding: 22px;
+    /* background-color: matched to GTK theme by mate-hud */
+
+    border: 2px;
+    border-radius:  12px 12px 0px 0px;
+    /* border-color: matched to GTK theme by mate-hud */
+}
+
+entry, prompt, case-indicator {
+    text-font: inherit;
+    text-color:inherit;
+}
+
+prompt {
+    margin: 0px 0.3em 0em 0em ;
+}
+
+listview {
+    padding: 16px;
+    border-radius: 0px 0px 12px 12px;
+    /* border-color: matched to GTK theme by mate-hud */
+    border: 0px 2px 2px 2px;
+    /* background-color: matched to GTK theme by mate-hud */
+    dynamic: false;
+    font: "Sans Regular 10";
+}
+
+element {
+    padding: 6px;
+    vertical-align: 0.5;
+    border-radius: 8px;
+    background-color: transparent;
+    /* text-color: matched to GTK theme by mate-hud */
+}
+
+element selected.normal {
+    /* background-color: matched to GTK theme by mate-hud */
+    /* text-color: matched to GTK theme by mate-hud */
+}
+
+element-text, element-icon {
+    background-color: inherit;
+    text-color:       inherit;
+}
