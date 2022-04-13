@@ -218,9 +218,14 @@ def get_menu(menuKeys):
        else:
           return 0
 
-    width_dpi = get_dpi(screen.width(), screen.width_mm())
-    height_dpi = get_dpi(screen.height(), screen.height_mm())
-    dpi = scale * (width_dpi + height_dpi) / 2
+    dpi = screen.get_resolution()
+    # https://docs.gtk.org/gdk3/method.Screen.get_resolution.html
+    # gdk_screen_get_resolution() returns -1 if no resolution is set
+    if dpi == -1:
+        width_dpi = get_dpi(screen.width(), screen.width_mm())
+        height_dpi = get_dpi(screen.height(), screen.height_mm())
+        dpi = (width_dpi + height_dpi) / 2
+    dpi *= scale
 
     rofi_theme = get_rofi_theme()
     mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
