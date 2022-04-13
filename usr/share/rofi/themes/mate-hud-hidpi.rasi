@@ -25,9 +25,8 @@ configuration {
 window {
     location: north west;
     anchor:   north west;
-    width: 400px;
+    width: 800px;
     transparency: "screenshot";
-    //padding: 10px;
     border:  0px;
 
     /* background-color: matched to GTK theme by mate-hud */
@@ -35,7 +34,7 @@ window {
     children:  [mainbox];
     orientation: horizontal;
 
-    margin: 12px 12px;
+    margin: 24px 24px;
 
     font: "Sans Regular 10";
 }
@@ -47,10 +46,10 @@ mainbox {
 
 inputbar {
     /* text-color: matched to GTK theme by mate-hud */
-    padding: 11px;
+    padding: 22px;
     /* background-color: matched to GTK theme by mate-hud */
 
-    border: 1px;
+    border: 2px;
     //border-radius:  6px 6px 0px 0px;
     /* border-color: matched to GTK theme by mate-hud */
 }
@@ -65,16 +64,16 @@ prompt {
 }
 
 listview {
-    padding: 8px;
+    padding: 16px;
     /* border-color: matched to GTK theme by mate-hud */
-    border: 0px 1px 1px 1px;
+    border: 0px 2px 2px 2px;
     /* background-color: matched to GTK theme by mate-hud */
     dynamic: false;
     font: "Sans Regular 10";
 }
 
 element {
-    padding: 3px 0px;
+    padding: 6px 0px;
     vertical-align: 0.5;
     background-color: transparent;
     /* text-color: matched to GTK theme by mate-hud */

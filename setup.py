@@ -28,7 +28,7 @@ import DistUtilsExtra.command.build_extra
 import DistUtilsExtra.command.build_i18n
 import DistUtilsExtra.command.clean_i18n
 
-__VERSION__ = '22.04.2'
+__VERSION__ = '22.04.4'
 
 def datafilelist(installbase, sourcebase):
     datafileList = []
@@ -44,7 +44,9 @@ data_files = [
     ('{prefix}/share/mate/autostart/'.format(prefix=sys.prefix), ['usr/share/mate/autostart/mate-hud.desktop']),
     ('{prefix}/share/glib-2.0/schemas/'.format(prefix=sys.prefix), ['usr/share/glib-2.0/schemas/org.mate.hud.gschema.xml']),
     ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-hidpi.rasi']),
     ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded-hidpi.rasi']),
 ]
 
 cmdclass = {

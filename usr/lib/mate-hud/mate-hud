@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import gi
+gi.require_version('Gdk', '3.0')
 gi.require_version("Gtk", "3.0")
 
 import configparser
@@ -11,7 +12,6 @@ import psutil
 import re
 import setproctitle
 import subprocess
-import sys
 import time
 import threading
 from dbus.mainloop.glib import DBusGMainLoop
@@ -266,16 +266,13 @@ def get_menu(menuKeys):
     height_dpi = get_dpi(screen.height(), screen.height_mm())
     dpi = scale * (width_dpi + height_dpi) / 2
 
-    if 'XFCE' in desktop_name:
-        xfce_custom_dpi = 0
-        try:
-            xfce_custom_dpi = Xfconf.Channel.new_with_property_base("xsettings", "/Xft").get_int("/DPI", 0)
-        except:
-            logging.debug('running XFCE, but xfconf gi repository not available')
-        if xfce_custom_dpi > 0:
-            dpi = xfce_custom_dpi
-
     rofi_theme = get_rofi_theme()
+    mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
+    themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
+    # switch to the hidpi version of the theme if needed.
+    if rofi_theme in mate_hud_themes:
+        if scale > 1 and rofi_theme in themes_hidpi_versions.keys():
+            rofi_theme = themes_hidpi_versions[rofi_theme]
     cmd = ['rofi', '-dmenu', '-i',
            '-p', 'HUD',
            '-lines', '10',
@@ -331,7 +328,7 @@ def get_menu(menuKeys):
 
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
-    if rofi_theme == 'mate-hud' or rofi_theme == 'mate-hud-rounded' :
+    if rofi_theme in mate_hud_themes:
         # Get the currently active font.
         font_name = ''
         if 'MATE' in desktop_name:
@@ -366,7 +363,7 @@ def get_menu(menuKeys):
         #info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
         #info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
         #text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
-        
+
         # Overwrite some of the theme options
         theme_options = 'listview { background-color: ' + bg_color + '; ' + \
                         '           border-color: ' + selected_bg_color + '; } ' + \
@@ -649,7 +646,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
     def __init__(self):
         GObject.GObject.__init__(self)
         threading.Thread.__init__(self)
-        self.setDaemon(True)
+        self.daemon = True
 
         self.display = display.Display()
         self.screen = self.display.screen()

@@ -1,5 +1,5 @@
 /**
- * mate-hud rofi theme
+ * mate-hud-rounded rofi theme (rounded corners)
  * Incomplete theme designed to have certain properties applied at mate-hud runtime
  * Don't use this for anything else than mate-hud
  * Adapted by twa022 <twa022 at gmail dot com>
@@ -25,17 +25,17 @@ configuration {
 window {
     location: north west;
     anchor:   north west;
-    width: 400px;
+    width: 800px;
     transparency: "screenshot";
-    //padding: 10px;
     border:  0px;
+    border-radius: 12px;
 
     /* background-color: matched to GTK theme by mate-hud */
     spacing: 0;
     children:  [mainbox];
     orientation: horizontal;
 
-    margin: 12px 12px;
+    margin: 24px 24px;
 
     font: "Sans Regular 10";
 }
@@ -47,11 +47,11 @@ mainbox {
 
 inputbar {
     /* text-color: matched to GTK theme by mate-hud */
-    padding: 11px;
+    padding: 22px;
     /* background-color: matched to GTK theme by mate-hud */
 
-    border: 1px;
-    //border-radius:  6px 6px 0px 0px;
+    border: 2px;
+    border-radius:  12px 12px 0px 0px;
     /* border-color: matched to GTK theme by mate-hud */
 }
 
@@ -65,17 +65,19 @@ prompt {
 }
 
 listview {
-    padding: 8px;
+    padding: 16px;
+    border-radius: 0px 0px 12px 12px;
     /* border-color: matched to GTK theme by mate-hud */
-    border: 0px 1px 1px 1px;
+    border: 0px 2px 2px 2px;
     /* background-color: matched to GTK theme by mate-hud */
     dynamic: false;
     font: "Sans Regular 10";
 }
 
 element {
-    padding: 3px 0px;
+    padding: 6px;
     vertical-align: 0.5;
+    border-radius: 8px;
     background-color: transparent;
     /* text-color: matched to GTK theme by mate-hud */
 }
