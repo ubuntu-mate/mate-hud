@@ -25,6 +25,8 @@ try:
 except:
     logging.debug('Xfconf gi repository not available')
 
+margin = [ -1, -1 ]
+
 class EWMH:
     """This class provides the ability to get and set properties defined
     by the EWMH spec. It was blanty ripped out of pyewmh
@@ -216,6 +218,83 @@ def terminate_appmenu_registrar():
     if process_running('appmenu-registrar') and not appmenu_loaded:
         kill_process('appmenu-registrar')
 
+def get_panel_margin():
+    margin = [ 0, 0 ]
+    if process_running('xfce4-panel'):
+        pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
+        orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
+        try:
+            xfc_panel = Xfconf.Channel.new("xfce4-panel")
+            panels = xfc_panel.get_arrayv("/panels")
+            for panel in panels:
+                _pos = xfc_panel.get_string("/panels/panel-" + str(panel) + "/position", "p=0;x=0;y=0") #.split(';=')
+                pos = re.split(r'[;=]', _pos ) #pos.split(';\=')
+                # [ 'p', p, 'x', x, 'y', y ]
+                edge = int( pos[1] )
+                mode = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/mode", 0 )
+                is_panel = False
+                ah = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/autohide-behavior", 0)
+                if ah == 0:
+                    is_panel = True
+                if is_panel and mode in orientation.get('vertical') and edge in pos_nm.get('left'):
+                    x = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                    if x > margin[0]:
+                        margin[0] = x
+                if is_panel and mode in orientation.get('horizontal') and edge in pos_nm.get('top'):
+                    y = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                    if y > margin[1]:
+                        margin[1] = y
+        except:
+            debug.logging('Problem accessing xfconf')
+    if process_running('mate-panel'):
+        panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
+        for p in panels:
+            size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
+            orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
+            if orientation == 'left' and size > margin[0]:
+                margin[0] = size
+            if orientation == 'top' and size > margin[1]:
+                margin[1] = size
+    if process_running('plank'):
+        active_docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
+        for dock in active_docks:
+            position = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'position')
+
+            size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
+            theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
+            config = configparser.ConfigParser()
+            for prefix in [ '/usr/share/', '/usr/local/share/', '/opt/' ]:
+                cfg_file = prefix + 'plank/themes/' + theme + '/dock.theme'
+                if os.path.isfile( cfg_file ):
+                    config.read( cfg_file )
+                    break
+            pad = 0
+            try:
+                pad = float(config['PlankDockTheme']['BottomPadding'])
+            except:
+                pass
+            size = round( size * ( 1 + pad / 10 ) )
+
+            plank_is_panel = False
+            if get_string( 'net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'hide-mode') == 'none':
+                plank_is_panel = True
+            if plank_is_panel and position == 'left' and size > margin[0]:
+                margin[0] = size
+            if plank_is_panel and position == 'top' and size > margin[1]:
+                margin[1] = size
+    if process_running('dockx'):
+        dockx_is_panel = False
+        if get_string( 'org.dockbarx.dockx', None, 'behaviour') == 'standard':
+            dockx_is_panel = True
+        position = get_string( 'org.dockbarx.dockx', None, 'position')
+        size = get_number( 'org.dockbarx.dockx', None, 'size' )
+        if dockx_is_panel and position == 'left' and size > margin[0]:
+            margin[0] = size
+        if dockx_is_panel and position == 'top' and size > margin[1]:
+            margin[1] = size
+
+    return margin
+
 def rgba_to_hex(color):
    """
    Return hexadecimal string for :class:`Gdk.RGBA` `color`.
@@ -293,41 +372,11 @@ def get_menu(menuKeys):
            '-theme', rofi_theme,
            '-theme-str', 'window { location: north west; ' + \
                          '         anchor: north west; }' ] # Override the window location to the top left of the current window
-
     if get_monitor() == '-1':
-        margin = [ 0, 0 ]
-        if process_running('xfce4-panel'):
-            pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
-            orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
-            try:
-                xfc_panel = Xfconf.Channel.new("xfce4-panel")
-                panels = xfc_panel.get_arrayv("/panels")
-                for panel in panels:
-                    _pos = xfc_panel.get_string("/panels/panel-" + str(panel) + "/position", "p=0;x=0;y=0") #.split(';=')
-                    pos = re.split(r'[;=]', _pos ) #pos.split(';\=')
-                    # [ 'p', p, 'x', x, 'y', y ]
-                    edge = int( pos[1] )
-                    mode = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/mode", 0 )
-                    if mode in orientation.get('vertical') and edge in pos_nm.get('left'):
-                        x = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
-                        if x > margin[0]:
-                            margin[0] = x
-                    if mode in orientation.get('horizontal') and edge in pos_nm.get('top'):
-                        y = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
-                        if y > margin[1]:
-                            margin[1] = y
-            except:
-                debug.logging('Problem accessing xfconf')
-        elif 'MATE' in get_desktop_env():
-            panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
-            for p in panels:
-                size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
-                orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
-                if orientation == 'left' and size > margin[0]:
-                    margin[0] = size
-                if orientation == 'top' and size > margin[1]:
-                    margin[1] = size
-
+        global margin
+        # if margin hasn't been set we want to set it now. If we set it each time we call the HUD it really slows it down.
+        if margin[0] < 0 or margin[1] < 0:
+            margin = get_panel_margin()
         if margin[0] > 0 or margin[1] > 0:
             cmd += [ '-theme-str', 'window { margin: ' + str(margin[1]) + 'px ' + str(margin[0]) + 'px; } ' ]
 
