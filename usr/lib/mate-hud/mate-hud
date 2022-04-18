@@ -140,12 +140,12 @@ def process_get_cmdline(name):
     uid = os.getuid()
     for process in psutil.process_iter():
         try:
-            proc = process.as_dict(attrs=['name', 'cmdline', 'uids'])
+            proc = process.as_dict(attrs=['name', 'uids'])
         except psutil.NoSuchProcess:
             pass
         else:
             if name == proc['name'] and uid == proc['uids'].real:
-                return proc['cmdline']
+                return process.as_dict(attrs=['cmdline'])['cmdline']
     return []
 
 def kill_process(name):
