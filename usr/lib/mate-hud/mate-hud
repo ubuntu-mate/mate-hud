@@ -1026,6 +1026,11 @@ if __name__ == "__main__":
 
     def change_custom_width(schema, key):
         custom_width = settings.get_int('custom-width')
+        if custom_width > 400:
+            logging.info( "Setting custom width: %spx" % custom_width )
+        else:
+            logging.info( "Setting custom width: %spx. (Invalid <= 400, will be ignored.)" % custom_width )
+        store.custom_width = custom_width
 
     def change_menu_separator(schema, key):
         default = u'\u00BB'
