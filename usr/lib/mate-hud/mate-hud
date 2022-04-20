@@ -942,8 +942,8 @@ def get_monitor():
     return str(monitor)
 
 def get_location():
-    valid_locations = [ 'north west', 'north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'center' ]
-    default_location = 'north west'
+    valid_locations = [ 'default' 'north west', 'north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'center' ]
+    default_location = 'default'
     location = default_location
     try:
         location = get_string('org.mate.hud', None, 'location')
@@ -1003,8 +1003,7 @@ if __name__ == "__main__":
 
     def change_monitor(schema, key):
         store.monitor = get_monitor()
-        if store.location != 'center' and store.monitor != '-2':
-            store.margin = get_panel_margin()
+        change_location(None, None)
 
     def change_location(schema, key):
         location = get_location()
@@ -1013,22 +1012,27 @@ if __name__ == "__main__":
                 location = 'north east'
             else:
                 location = 'north west'
+            logging.info( "Using default location: %s" % location )
+        else:
+            logging.info( "Updated location to : %s" % location )
         store.location = location
         if store.location == 'center':
             logging.info( 'Updating panel margin to 0 for HUD in the center' )
             store.panel_margin = [ 0, 0 ]
-        elif store.monitor != '-2':
+        elif store.monitor == '-2':
+            store.margin = [ -1, -1 ]
+        else:
             store.margin = get_panel_margin()
 
     def change_custom_width(schema, key):
-        store.custom_width = settings.get_int('custom-width')
+        custom_width = settings.get_int('custom-width')
 
     def change_menu_separator(schema, key):
         default = u'\u00BB'
         if isrtl:
             default = u'\u00AB'
         menu_separator = settings.get_string('menu-separator')
-        if len(re.findall(r'^(0x)?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
+        if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
             try:
                 store.menu_separator = chr(int(menu_separator, 16))
                 logging.info( "Menu separator updated to '%s'" % store.menu_separator )
@@ -1077,8 +1081,7 @@ if __name__ == "__main__":
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
-        store.monitor = get_monitor()
-        change_location(None, None)
+        change_monitor(None, None) # This calls change_location too
         store.dpi = get_display_dpi()
         change_custom_width(None, None)
         change_menu_separator(None, None)
