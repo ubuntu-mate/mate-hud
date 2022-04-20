@@ -328,6 +328,10 @@ def get_panel_margin():
            ( ( position == 'top' and 'north' in location ) or \
            ( position == 'bottom' and 'south' in location ) ):
             margin[1] = size
+    if margin[0] > 0 and margin[1] < 0:
+        margin[1] = 0
+    if margin[1] > 0 and margin[0] < 0:
+        margin[0] = 0
     logging.info( 'New margin:' + str(margin) )
     return margin
 
