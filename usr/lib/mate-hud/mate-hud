@@ -8,6 +8,7 @@ import configparser
 import dbus
 import logging
 import os
+import pkgconfig
 import psutil
 import re
 import setproctitle
@@ -25,7 +26,26 @@ try:
 except:
     logging.debug('Xfconf gi repository not available')
 
-margin = [ -1, -1 ]
+class Store(object):
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Store, cls).__new__(cls)
+            # Set up the default store variables
+            cls.instance.margin = [ -1, -1 ]
+            cls.instance.last_gtk_theme = ''
+            cls.instance.gtk_theme = ''
+            cls.instance.last_font_name = ''
+            cls.instance.font_name = ''
+            cls.instance.dpi = 0
+            cls.instance.rofi_theme = 'mate-hud-rounded'
+            cls.instance.rofi_theme_overrides = None
+            cls.instance.mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
+            cls.instance.themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
+            cls.instance.monitor = '-2'
+            cls.instance.location = 'north west'
+            cls.instance.custom_width = 0
+            cls.instance.menu_separator = u'\u00BB'
+        return cls.instance
 
 class EWMH:
     """This class provides the ability to get and set properties defined
@@ -81,7 +101,7 @@ def format_path(path):
     result = result.replace('Root > ', '')
     result = result.replace('Label Empty > ', '')
     result = result.replace('_', '')
-    return result.replace('>', u'\u0020\u0020\u00BB\u0020\u0020')
+    return result.replace('>', u'\u0020\u0020' + Store().menu_separator + u'\u0020\u0020')
 
 def get_bool(schema, path, key):
     if path:
@@ -183,7 +203,7 @@ def terminate_appmenu_registrar():
                     break
         except:
             logging.debug('running XFCE panel, but xfconf gi repository not available')
-    cmdline = process_cmdline( 'vala-panel' )
+    cmdline = process_get_cmdline( 'vala-panel' )
     if not appmenu_loaded and cmdline:
         profile = 'default'
         try:
@@ -219,7 +239,9 @@ def terminate_appmenu_registrar():
         kill_process('appmenu-registrar')
 
 def get_panel_margin():
-    margin = [ 0, 0 ]
+    logging.info( 'Getting panel margin' )
+    margin = [ -1, -1 ]
+    location = Store().location
     if process_running('xfce4-panel'):
         pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
         orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
@@ -236,11 +258,15 @@ def get_panel_margin():
                 ah = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/autohide-behavior", 0)
                 if ah == 0:
                     is_panel = True
-                if is_panel and mode in orientation.get('vertical') and edge in pos_nm.get('left'):
+                if is_panel and mode in orientation.get('vertical') and \
+                   ( ( edge in pos_nm.get('left') and 'west' in location ) or \
+                   ( edge in pos_nm.get('right') and 'east' in location ) ):
                     x = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
                     if x > margin[0]:
                         margin[0] = x
-                if is_panel and mode in orientation.get('horizontal') and edge in pos_nm.get('top'):
+                if is_panel and mode in orientation.get('horizontal') and \
+                   ( ( edge in pos_nm.get('top') and 'north' in location ) or \
+                   ( edge in pos_nm.get('bottom') and 'south' in location ) ):
                     y = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
                     if y > margin[1]:
                         margin[1] = y
@@ -251,9 +277,13 @@ def get_panel_margin():
         for p in panels:
             size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
             orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
-            if orientation == 'left' and size > margin[0]:
+            if ( ( orientation == 'left' and 'west' in location ) or \
+               ( orientation == 'right' and 'east' in location ) ) and \
+               size > margin[0]:
                 margin[0] = size
-            if orientation == 'top' and size > margin[1]:
+            if ( ( orientation == 'top' and 'north' in location ) or \
+               ( orientation == 'bottom' and 'south' in location ) ) and \
+               size > margin[1]:
                 margin[1] = size
     if process_running('plank'):
         active_docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
@@ -263,11 +293,9 @@ def get_panel_margin():
             size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
             theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
             config = configparser.ConfigParser()
-            for prefix in [ '/usr/share/', '/usr/local/share/', '/opt/' ]:
-                cfg_file = prefix + 'plank/themes/' + theme + '/dock.theme'
-                if os.path.isfile( cfg_file ):
-                    config.read( cfg_file )
-                    break
+            cfg_file = pkgconfig.variables('plank').get('prefix') + 'plank/themes/' + theme + '/dock.theme'
+            if os.path.isfile( cfg_file ):
+                config.read( cfg_file )
             pad = 0
             try:
                 pad = float(config['PlankDockTheme']['BottomPadding'])
@@ -278,9 +306,13 @@ def get_panel_margin():
             plank_is_panel = False
             if get_string( 'net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'hide-mode') == 'none':
                 plank_is_panel = True
-            if plank_is_panel and position == 'left' and size > margin[0]:
+            if plank_is_panel and size > margin[0] and \
+               ( ( position == 'left' and 'west' in location ) or \
+               ( position == 'right' and 'east' in location ) ):
                 margin[0] = size
-            if plank_is_panel and position == 'top' and size > margin[1]:
+            if plank_is_panel and size > margin[1] and \
+               ( ( position == 'top' and 'north' in location ) or \
+               ( position == 'bottom' and 'south' in location ) ):
                 margin[1] = size
     if process_running('dockx'):
         dockx_is_panel = False
@@ -288,11 +320,15 @@ def get_panel_margin():
             dockx_is_panel = True
         position = get_string( 'org.dockbarx.dockx', None, 'position')
         size = get_number( 'org.dockbarx.dockx', None, 'size' )
-        if dockx_is_panel and position == 'left' and size > margin[0]:
+        if dockx_is_panel and size > margin[0] and \
+           ( ( position == 'left' and 'west' in location ) or \
+           ( position == 'right' and 'east' in location ) ):
             margin[0] = size
-        if dockx_is_panel and position == 'top' and size > margin[1]:
+        if dockx_is_panel and size > margin[1] and \
+           ( ( position == 'top' and 'north' in location ) or \
+           ( position == 'bottom' and 'south' in location ) ):
             margin[1] = size
-
+    logging.info( 'New margin:' + str(margin) )
     return margin
 
 def rgba_to_hex(color):
@@ -310,28 +346,54 @@ def get_color(style_context, preferred_color, fallback_color):
         color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
     return color
 
-def get_menu(menuKeys):
-    """
-    Generate menu of available menu items.
-    """
-    if not menuKeys:
-        return ''
+def update_theme_overrides_if_needed():
+    store = Store()
+    gtk_settings = Gtk.Settings.get_default()
+    store.gtk_theme = gtk_settings.get_property( 'gtk-theme-name' )
+    store.font_name = gtk_settings.get_property( 'gtk-font-name' )
+    if not store.rofi_theme_overrides or store.gtk_theme != store.last_gtk_theme or store.font_name != store.last_font_name:
+        store.rofi_theme_overrides = get_theme_overrides()
+        store.last_gtk_theme = store.gtk_theme
+        store.last_font_name = store.font_name
 
-    menu_string, *menu_items = menuKeys
-    for menu_item in menu_items:
-        menu_string += '\n' + menu_item
+def get_theme_overrides():
+    logging.info( 'Getting rofi theme overrides' )
+    # Get the currently active font.
+    theme_options = ''
 
-    # Get some colors from the currently selected theme.
+    font_name = Gtk.Settings.get_default().get_property( 'gtk-font-name' )
+    if font_name:
+        theme_options += ' * { font: "' + font_name + '"; } '
+
     window = Gtk.Window()
+    style_context = window.get_style_context()
 
-    # Allow closing the HUD with the same modifier key that opens it
-    shortcut = get_shortcut()
-    keyval, modifiers = Gtk.accelerator_parse(shortcut)
-    shortcut = '' if modifiers else ',' + shortcut
+    bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
+    fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
+    #borders = get_color(style_context, 'borders', 'border_color')
 
-    desktop_name = get_desktop_env()
+    logging.debug('bg_color: %s', str(bg_color))
+    logging.debug('fg_color: %s', str(fg_color))
+    #logging.debug('borders: %s', str(borders))
 
+    selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
+    selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
+
+    # Overwrite some of the theme options
+    theme_options += 'listview { background-color: ' + bg_color + '; ' + \
+                     '           border-color: ' + selected_bg_color + '; } ' + \
+                     'element { text-color: ' + fg_color + '; } ' + \
+                     'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
+                     '                           text-color: ' + selected_fg_color + '; } ' + \
+                     'inputbar { background-color: ' + bg_color + '; ' + \
+                     '            border-color: ' + selected_bg_color + '; ' + \
+                     '            text-color: ' + fg_color + '; } '
+    return theme_options
+
+def get_display_dpi():
+    logging.info( 'Getting DPI' )
     # Calculate display DPI value
+    window = Gtk.Window()
     screen = window.get_screen()
     scale = window.get_scale_factor()
 
@@ -348,19 +410,30 @@ def get_menu(menuKeys):
         width_dpi = get_dpi(screen.width(), screen.width_mm())
         height_dpi = get_dpi(screen.height(), screen.height_mm())
         dpi = (width_dpi + height_dpi) / 2
-    dpi *= scale
+    return round( dpi * scale )
 
-    rofi_theme = get_rofi_theme()
-    mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
-    themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
-    # switch to the hidpi version of the theme if needed.
-    if rofi_theme in mate_hud_themes:
-        if scale > 1 and rofi_theme in themes_hidpi_versions.keys():
-            rofi_theme = themes_hidpi_versions[rofi_theme]
+def get_menu(menuKeys):
+    """
+    Generate menu of available menu items.
+    """
+    if not menuKeys:
+        return ''
+
+    menu_string, *menu_items = menuKeys
+    for menu_item in menu_items:
+        menu_string += '\n' + menu_item
+
+    # Allow closing the HUD with the same modifier key that opens it
+    shortcut = get_shortcut()
+    keyval, modifiers = Gtk.accelerator_parse(shortcut)
+    shortcut = '' if modifiers else ',' + shortcut
+
+    store = Store()
+
     cmd = ['rofi', '-dmenu', '-i',
            '-p', 'HUD',
            '-lines', '10',
-           '-dpi', str(round(dpi)),
+           '-dpi', str(store.dpi),
            '-separator-style', 'none',
            '-hide-scrollbar',
            '-click-to-exit',
@@ -368,66 +441,22 @@ def get_menu(menuKeys):
            '-line-padding', '2',
            '-kb-cancel', 'Escape' + shortcut,
            '-sync', # withhold display until menu entries are ready
-           '-monitor', get_monitor(), # show in the current application
-           '-theme', rofi_theme,
-           '-theme-str', 'window { location: north west; ' + \
-                         '         anchor: north west; }' ] # Override the window location to the top left of the current window
+           '-monitor', store.monitor, # show in the current application or current window
+           '-theme', store.rofi_theme,
+           '-theme-str', 'window { location: ' + store.location + '; ' + \
+                         '         anchor: ' + store.location + '; }' ] # Override the window location to the top left of the current window
     if get_monitor() == '-1':
-        global margin
-        # if margin hasn't been set we want to set it now. If we set it each time we call the HUD it really slows it down.
-        if margin[0] < 0 or margin[1] < 0:
-            margin = get_panel_margin()
-        if margin[0] > 0 or margin[1] > 0:
+        margin = store.margin
+        if margin[0] >= 0 or margin[1] >= 0:
             cmd += [ '-theme-str', 'window { margin: ' + str(margin[1]) + 'px ' + str(margin[0]) + 'px; } ' ]
 
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
-    if rofi_theme in mate_hud_themes:
-        # Get the currently active font.
-        font_name = ''
-        if 'MATE' in desktop_name:
-            font_name = get_string('org.mate.interface', None, 'font-name')
-        elif 'XFCE' in desktop_name:
-            try:
-                font_name = Xfconf.Channel.new_with_property_base("xsettings", "/Gtk").get_string("/FontName", "")
-            except:
-                logging.debug('running XFCE, but xfconf gi repository not available')
-        elif 'X-Cinnamon' in desktop_name:
-            font_name = get_string('org.cinnamon.desktop.interface', None, 'font-name')
-        elif 'Budgie:GNOME' in desktop_name:
-            font_name = get_string('org.gnome.desktop.interface', None, 'font-name')
-        if font_name:
-            cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
-
-        window = Gtk.Window()
-        style_context = window.get_style_context()
-
-        bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
-        fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
-        #borders = get_color(style_context, 'borders', 'border_color')
-
-        logging.debug('bg_color: %s', str(bg_color))
-        logging.debug('fg_color: %s', str(fg_color))
-        #logging.debug('borders: %s', str(borders))
-
-        selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
-        selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
-        #error_bg_color = rgba_to_hex(style_context.lookup_color('error_bg_color')[1])
-        #error_fg_color = rgba_to_hex(style_context.lookup_color('error_fg_color')[1])
-        #info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
-        #info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
-        #text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
-
-        # Overwrite some of the theme options
-        theme_options = 'listview { background-color: ' + bg_color + '; ' + \
-                        '           border-color: ' + selected_bg_color + '; } ' + \
-                        'element { text-color: ' + fg_color + '; } ' + \
-                        'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
-                        '                           text-color: ' + selected_fg_color + '; } ' + \
-                        'inputbar { background-color: ' + bg_color + '; ' + \
-                        '            border-color: ' + selected_bg_color + '; ' + \
-                        '            text-color: ' + fg_color + '; } '
-        cmd += [ '-theme-str', theme_options ]
+    if store.rofi_theme in store.mate_hud_themes:
+        update_theme_overrides_if_needed()
+        cmd += [ '-theme-str', store.rofi_theme_overrides ]
+    if store.custom_width > 400:
+        cmd += [ '-theme-str', ' window { width: ' + str(store.custom_width) + 'px; } ' ]
 
     menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
@@ -705,7 +734,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         self.display = display.Display()
         self.screen = self.display.screen()
         self.window = self.screen.root
-        self.keymap = Gdk.Keymap().get_default()
+        self.keymap = Gdk.Keymap().get_for_display(Gdk.Display().get_default())
         self.keycodes = self.get_keycodes()
         self.ignored_masks = self.get_mask_combinations(X.LockMask | X.Mod2Mask | X.Mod5Mask)
         self.map_modifiers()
@@ -912,6 +941,18 @@ def get_monitor():
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % default)
     return str(monitor)
 
+def get_location():
+    valid_locations = [ 'north west', 'north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'center' ]
+    default_location = 'north west'
+    location = default_location
+    try:
+        location = get_string('org.mate.hud', None, 'location')
+    except:
+        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % default_location)
+    if location not in valid_locations:
+        location = default_location
+    return location
+
 def remove_autostart(filename):
     config_dir = GLib.get_user_config_dir()
     autostart_file = os.path.join(config_dir, 'autostart', filename)
@@ -933,6 +974,79 @@ if __name__ == "__main__":
         tap_timeout = settings.get_int("tap-timeout")
         keybinder.tap_timeout = tap_timeout;
 
+    def change_rofi_theme(schema, key):
+        default_theme = 'mate-hud-rounded'
+        rofi_theme = settings.get_string("rofi-theme")
+
+        themes = []
+        theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
+                       pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
+        for directory in theme_dirs:
+            for filename in os.listdir(directory):
+                f = os.path.join(directory, filename)
+                # checking if it is a file
+                if os.path.isfile(f):
+                    if filename[-5:] == '.rasi':
+                        theme = filename[:-5]
+                        if theme not in themes:
+                            themes.append( theme )
+        if not rofi_theme in themes:
+            logging.info( '%s not found as a valid rofi theme, defaulting to %s' % ( rofi_theme, default_theme ) )
+            rofi_theme = default_theme
+
+        if rofi_theme in store.mate_hud_themes:
+            if Gtk.Window().get_scale_factor() > 1 and rofi_theme in store.themes_hidpi_versions.keys():
+                rofi_theme = store.themes_hidpi_versions[rofi_theme]
+        store.rofi_theme = rofi_theme
+        if store.rofi_theme in store.mate_hud_themes:
+            update_theme_overrides_if_needed()
+
+    def change_monitor(schema, key):
+        store.monitor = get_monitor()
+        if store.location != 'center' and store.monitor != '-2':
+            store.margin = get_panel_margin()
+
+    def change_location(schema, key):
+        location = get_location()
+        if location == 'default':
+            if isrtl:
+                location = 'north east'
+            else:
+                location = 'north west'
+        store.location = location
+        if store.location == 'center':
+            logging.info( 'Updating panel margin to 0 for HUD in the center' )
+            store.panel_margin = [ 0, 0 ]
+        elif store.monitor != '-2':
+            store.margin = get_panel_margin()
+
+    def change_custom_width(schema, key):
+        store.custom_width = settings.get_int('custom-width')
+
+    def change_menu_separator(schema, key):
+        default = u'\u00BB'
+        if isrtl:
+            default = u'\u00AB'
+        menu_separator = settings.get_string('menu-separator')
+        if len(re.findall(r'^(0x)?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
+            try:
+                store.menu_separator = chr(int(menu_separator, 16))
+                logging.info( "Menu separator updated to '%s'" % store.menu_separator )
+            except:
+                logging.info( "Invalid menu separator '%s'specified. Using default '%s'" % ( menu_separator, default ) )
+                store.menu_separator = default
+        elif len(menu_separator) == 1:
+            store.menu_separator = menu_separator
+            logging.info( "Menu separator updated to '%s'" % store.menu_separator )
+        elif menu_separator == 'default':
+            store.menu_separator = default
+            logging.info( "Menu separator updated to '%s'" % store.menu_separator )
+        else:
+            logging.info( "Invalid menu separator '%s'specified. Using default '%s'" % ( menu_separator, default ) )
+            store.menu_separator = default
+
+    store = Store()
+
     enabled = False
     enabled = get_bool('org.mate.hud', None, 'enabled')
 
@@ -949,6 +1063,25 @@ if __name__ == "__main__":
         settings = Gio.Settings.new("org.mate.hud")
         settings.connect("changed::shortcut", change_shortcut)
         settings.connect("changed::tap-timeout", change_tap_timeout)
+        settings.connect("changed::rofi-theme", change_rofi_theme)
+        settings.connect("changed::hud-monitor", change_monitor)
+        settings.connect("changed::location", change_location)
+        settings.connect("changed::custom-width", change_custom_width)
+        settings.connect("changed::menu-separator", change_menu_separator)
+
+        isrtl = False
+        lang = os.environ['LANG'].split('_')[0]
+        rtl_languages = [ 'ar', 'arc', 'ckb', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ps', 'sd', 'ur', 'yi' ]
+        if lang in rtl_languages:
+            isrtl = True
+
+        # Do some initial setup, so we don't have to do it when the HUD is called
+        change_rofi_theme(None, None)
+        store.monitor = get_monitor()
+        change_location(None, None)
+        store.dpi = get_display_dpi()
+        change_custom_width(None, None)
+        change_menu_separator(None, None)
 
         try:
             GLib.MainLoop().run()
