@@ -946,7 +946,7 @@ def get_monitor():
     return str(monitor)
 
 def get_location():
-    valid_locations = [ 'default' 'north west', 'north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'center' ]
+    valid_locations = [ 'default', 'north west', 'north', 'north east', 'east', 'south east', 'south', 'south west', 'west', 'center' ]
     default_location = 'default'
     location = default_location
     try:
@@ -955,6 +955,7 @@ def get_location():
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % default_location)
     if location not in valid_locations:
         location = default_location
+        logging.error("Invalid location specified, defaulting to %s" % default_location )
     return location
 
 def remove_autostart(filename):
@@ -1018,7 +1019,7 @@ if __name__ == "__main__":
                 location = 'north west'
             logging.info( "Using default location: %s" % location )
         else:
-            logging.info( "Updated location to : %s" % location )
+            logging.info( "Updated location to: %s" % location )
         store.location = location
         if store.location == 'center':
             logging.info( 'Updating panel margin to 0 for HUD in the center' )
