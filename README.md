@@ -33,30 +33,26 @@ focused window, lists possible actions and asks the user which one to
 run. `mate-hud.py`, binds itself to the `<Ctrl><Alt>space` keyboard
 shortcut by default.
 
-### Gsettings
+### Settings
 
-`mate-hud.py` reads two gsettings keys:
+`mate-hud` includes a small GUI for configuring settings: `hud-settings.py`
+which should show up in your applications menu.
+
+Currently you have to set the shortcut manually with `gsettings` or `dconf-editor`
+But should be configurable in the GUI soon.
 
   * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
-  * `org.mate.hud`: `rofi-theme` (Default: `mate-hud`)
 
-`mate-hud.py` will not execute until those gsettings keys are created,
-which the `mate-hud` Debian package will do, and the `enabled` key
-is set to *True* using something like `dconf-editor`. MATE Tweak
-will soon add the functionality the endable/disable `mate-hud`.
+```
+gsettings set org.mate.hud shortcut <SHORTCUT>
+```
 
 ### Themes
 
-`mate-hud.py` uses the `mate-hud` theme by default.
-The included `mate-hud` and `mate-hud-rounded` themes try to use colors
-from your GTK theme. You can see the available rofi themes in
-`/usr/share/rofi/themes` or add your own to `~/.local/share/rofi/themes`
-Theme files are named `<theme name>.rasi` and you can change the theme using
-the following command:
-
-```
-gsettings set org.mate.hud rofi-theme <theme name>
-```
+`mate-hud.py` uses the `mate-hud-rounded` theme by default.
+The included `mate-hud` and `mate-hud-rounded` themes and their HiDPI variants
+try to use colors from your GTK theme and your system font. You can see
+the available themes and make changes with the included settings program.
 
 ### Manual Setup
 
@@ -82,11 +78,13 @@ export UBUNTU_MENUPROXY=1
   * `mate-desktop`
   * `python3`
   * `python3-dbus`
+  * `python3-pkgconfig`
   * `python3-setproctitle`
   * `python3-xlib`
   * `rofi`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
+  * `gir1.2-xfconf-0` Optional to read information about xfce4-panel from xfconf
 
 A reference package for Debian/Ubuntu is available from:
 
