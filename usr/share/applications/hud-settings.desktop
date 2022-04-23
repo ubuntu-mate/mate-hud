@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=HUD Settings
+Exec=/usr/lib/mate-hud/hud-settings.py
+StartupNotify=false
+Terminal=false
+Categories=Settings;
+X-XfcePluggable=true

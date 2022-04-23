@@ -41,6 +41,8 @@ def datafilelist(installbase, sourcebase):
 
 data_files = [
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/mate-hud']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/hud-settings.py']),
+    ('{prefix}/share/applications/'.format(prefix=sys.prefix), ['usr/share/applications/hud-settings.desktop']),
     ('{prefix}/share/mate/autostart/'.format(prefix=sys.prefix), ['usr/share/mate/autostart/mate-hud.desktop']),
     ('{prefix}/share/glib-2.0/schemas/'.format(prefix=sys.prefix), ['usr/share/glib-2.0/schemas/org.mate.hud.gschema.xml']),
     ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
