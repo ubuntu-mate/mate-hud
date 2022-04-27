@@ -18,6 +18,9 @@ class HUDSettingsWindow(Gtk.Window):
         super().__init__(title="HUD Settings")
         self.set_border_width(10)
 
+        ## Add custom style classes for invalid or changed cells
+        ## I don't really like doing it this way, but adding the
+        ## error or warning class to the fields didn't really
         screen = Gdk.Screen.get_default()
         provider = Gtk.CssProvider()
         style_context = Gtk.StyleContext()
@@ -25,8 +28,16 @@ class HUDSettingsWindow(Gtk.Window):
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
         css = b"""
+        entry.changed, combobox.changed button{
+            border: solid #1fced2;
+            background-color: #1fced2;
+            color: #000;
+            border-width: 2px;
+        }
         entry.invalid, combobox.invalid button {
             border: solid #d83737;
+            background-color: #d83737;
+            color: #fff;
             border-width: 2px;
         }
         """
@@ -37,6 +48,17 @@ class HUDSettingsWindow(Gtk.Window):
 
         def use_custom_menu_separator_toggled(self):
             entry4.set_editable(checkbutton4.get_active())
+
+        def selection_changed(self):
+            if self == checkbutton1 or self == entry1 or self == units1:
+                indicate_changed( checkbutton1 )
+                indicate_changed( entry1 )
+                indicate_changed( units1 )
+            if self == checkbutton4 or self == entry4:
+                indicate_changed( checkbutton4 )
+                indicate_changed( entry4 )
+            else:
+                indicate_changed( self )
 
         def reset_to_defaults(self):
             print("resetting settings to default")
@@ -49,13 +71,16 @@ class HUDSettingsWindow(Gtk.Window):
             print("applying changes")
             settings = Gio.Settings.new('org.mate.hud')
             settings.set_string('hud-monitor', sel2.get_active_text())
+            indicate_changed( sel2, False )
 
             settings.set_string('location', sel3.get_active_text())
+            indicate_changed( sel3, False )
 
             if sel0.get_active_text().endswith(" (Invalid)"):
                 settings.set_string('rofi-theme', HUD_DEFAULTS.THEME)
             else:
                 settings.set_string('rofi-theme', sel0.get_active_text())
+            indicate_changed( sel0, False )
 
             sep = entry4.get_text()
             default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
@@ -71,6 +96,7 @@ class HUDSettingsWindow(Gtk.Window):
             else:
                 sep = default_sep
             settings.set_string('menu-separator', sep)
+            indicate_changed( entry4, False )
 
             if checkbutton1.get_active():
                 if validate_custom_width(entry1.get_text()):
@@ -79,6 +105,15 @@ class HUDSettingsWindow(Gtk.Window):
                     logging.error( "Invalid custom width specified, not setting new value." )
             else:
                 settings.set_string('custom-width', '0')
+            indicate_changed( entry1, False )
+
+        def indicate_changed( field, changed=True ):
+            style_context = field.get_style_context()
+            if changed == True:
+                style_context.add_class('changed')
+            else:
+                style_context.remove_class('changed')
+            field.set_tooltip_text("Change not applied yet")
 
         def indicate_invalid( field, invalid=True ):
             style_context = field.get_style_context()
@@ -96,7 +131,7 @@ class HUDSettingsWindow(Gtk.Window):
         def reload_view(key=None):
             logging.info("reloading view" + ( " for " + key if key else "" ) )
 
-            if not key or key == 'custom-theme':
+            if not key or key == 'rofi-theme':
                 themes = []
                 theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
                                pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
@@ -116,9 +151,11 @@ class HUDSettingsWindow(Gtk.Window):
                     sel0.insert(u, str(u), themes[u])
                 try:
                     sel0.set_active(themes.index(get_rofi_theme()))
+                    indicate_invalid( sel0, invalid=False )
                 except:
                     sel0.insert(len(themes), str(len(themes)), get_rofi_theme() + ' (Invalid)')
-                    sel0.set_active(len(themes) - 1)
+                    sel0.set_active(len(themes))
+                    indicate_invalid( sel0 )
 
             if not key or key == 'custom-width':
                 checkbutton1.set_active( use_custom_width() )
@@ -216,6 +253,13 @@ class HUDSettingsWindow(Gtk.Window):
         box_outer.pack_start(hbox, True, True, 0)
 
         reload_view()
+        sel0.connect("changed", selection_changed)
+        entry1.connect("changed", selection_changed)
+        units1.connect("changed", selection_changed)
+        sel2.connect("changed", selection_changed)
+        sel3.connect("changed", selection_changed)
+        entry4.connect("changed", selection_changed)
+        indicate_invalid( sel0 )
 
 if __name__ == "__main__":
     setproctitle.setproctitle('hud-settings')
