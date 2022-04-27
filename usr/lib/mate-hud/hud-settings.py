@@ -8,7 +8,8 @@ import re
 import setproctitle
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gio, Gtk
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk, Gio, Gtk
 
 from common import *
 
@@ -16,6 +17,20 @@ class HUDSettingsWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="HUD Settings")
         self.set_border_width(10)
+
+        screen = Gdk.Screen.get_default()
+        provider = Gtk.CssProvider()
+        style_context = Gtk.StyleContext()
+        style_context.add_provider_for_screen(
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        css = b"""
+        entry.invalid, combobox.invalid button {
+            border: solid #d83737;
+            border-width: 2px;
+        }
+        """
+        provider.load_from_data(css)
 
         def use_custom_theme_toggled(self):
             entry1.set_editable(checkbutton1.get_active())
@@ -64,6 +79,14 @@ class HUDSettingsWindow(Gtk.Window):
                     logging.error( "Invalid custom width specified, not setting new value." )
             else:
                 settings.set_string('custom-width', '0')
+
+        def indicate_invalid( field, invalid=True ):
+            style_context = field.get_style_context()
+            if invalid == True:
+                style_context.add_class('invalid')
+            else:
+                style_context.remove_class('invalid')
+            field.set_tooltip_text("Invalid entry")
 
         global reload_view_on_change
         def reload_view_on_change(schema, key):

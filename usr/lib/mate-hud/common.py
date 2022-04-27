@@ -6,7 +6,8 @@ import os
 import pkgconfig
 import re
 
-from gi.repository import Gio
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gio, Gtk
 
 def constant(f):
     def fset(self, value):
@@ -166,6 +167,7 @@ def use_custom_separator():
     return not ( sep == default or sep == 'default' )
 
 def isrtl():
-    lang = os.environ['LANG'].split('_')[0]
-    rtl_languages = [ 'ar', 'arc', 'ckb', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ps', 'sd', 'ur', 'yi' ]
-    return lang in rtl_languages
+    window = Gtk.Window()
+    style_context = window.get_style_context()
+    state = style_context.get_state()
+    return state & Gtk.StateFlags.DIR_RTL
