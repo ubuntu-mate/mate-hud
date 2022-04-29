@@ -2,7 +2,7 @@
 
 import gi
 import logging
-import os
+import os.path
 import pkgconfig
 import re
 import setproctitle
@@ -12,8 +12,13 @@ gi.require_version('Gdk', '3.0')
 from gi.repository import Gdk, Gio, Gtk
 
 from common import *
+import getkey_dialog
 
 class HUDCurrentSettings():
+    @property
+    def shortcut(self):
+        return get_string( 'org.mate.hud', None, 'shortcut' )
+
     @property
     def use_custom_width(self):
         return get_custom_width()[0]
@@ -47,13 +52,14 @@ class HUDCurrentSettings():
         return get_menu_separator()[1]
 
 class HUDSettingsWindow(Gtk.Window):
-    widget_name_to_property_map = { 'combobox-rofi-theme': 'rofi_theme', 
+    widget_name_to_property_map = { 'button-keyboard-shortcut': 'shortcut',
+                                    'combobox-rofi-theme': 'rofi_theme',
                                     'checkbutton-use-custom-width': 'use_custom_width',
                                     'entry-custom-width': 'custom_width',
                                     'combobox-custom-width-units': 'custom_width_units',
                                     'combobox-hud-monitor': 'hud_monitor',
                                     'combobox-location': 'location',
-                                    'checkbutton-use-custom-separator': 'use_custom_separator', 
+                                    'checkbutton-use-custom-separator': 'use_custom_separator',
                                     'entry-custom-separator': 'custom_separator' }
     valid_units = [ 'px', 'em', 'ch', '%' ]
 
@@ -62,18 +68,28 @@ class HUDSettingsWindow(Gtk.Window):
         self.add_custom_css_classes()
         self.set_border_width(10)
         self.set_resizable(False)
+        # Would be nice to have our own icon to use, but for now...
+        self.set_icon_name("preferences-system")
 
         box_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.add(box_outer)
 
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)        
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
+        labelx = Gtk.Label(label="Keyboard Shortcut: ", xalign=0, tooltip_text="Keyboard shortcut to activate the HUD")
+        hbox.pack_start(labelx, True, True, 0)
+        self.buttonx = Gtk.Button(name='button-keyboard-shortcut')
+        self.buttonx.connect("clicked", self.on_shortcut_clicked)
+        hbox.pack_start(self.buttonx, False, True, 0)
+        box_outer.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label0 = Gtk.Label(label="HUD Theme: ", xalign=0, tooltip_text="HUD theme. Default is 'mate-hud-rounded'\nThe mate-hud* themes attempt to match the system font and colors from the GTK theme.")
         hbox.pack_start(label0, True, True, 0)
         self.sel0 = Gtk.ComboBoxText(name='combobox-rofi-theme')
         hbox.pack_start(self.sel0, False, True, 0)
         box_outer.pack_start(hbox, True, True, 0)
 
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)        
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label1 = Gtk.Label(label="Custom Width: ", xalign=0, tooltip_text="Override the width of the HUD specified in the theme")
         hbox.pack_start(label1, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -90,7 +106,7 @@ class HUDSettingsWindow(Gtk.Window):
         hbox.pack_start(hbox_, False, True, 0)
         box_outer.pack_start(hbox, True, True, 0)
 
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)        
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label2 = Gtk.Label(label="Attach HUD to: ", xalign=0, tooltip_text="Where to attach the HUD.\nDefault is to the current window.\nIf set to monitor, the HUD will try to avoid overlapping any panels.")
         hbox.pack_start(label2, True, True, 0)
         self.sel2 = Gtk.ComboBoxText(name='combobox-hud-monitor')
@@ -140,7 +156,7 @@ class HUDSettingsWindow(Gtk.Window):
     def add_custom_css_classes(self):
         ## Add custom style classes for invalid or changed cells
         ## I don't really like doing it this way, but adding the
-        ## error or warning class to the fields didn't do a good 
+        ## error or warning class to the fields didn't do a good
         screen = Gdk.Screen.get_default()
         provider = Gtk.CssProvider()
         style_context = Gtk.StyleContext()
@@ -148,13 +164,13 @@ class HUDSettingsWindow(Gtk.Window):
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
         css = b"""
-        entry.changed, combobox.changed button, checkbutton.changed check {
+        entry.changed, combobox.changed button, button.changed, checkbutton.changed check {
             border: solid #1fced2;
             background-color: #1fced2;
             color: #000;
             border-width: 2px;
         }
-        entry.invalid, combobox.invalid button, checkbutton.invalid check {
+        entry.invalid, combobox.invalid button, button.invalid, checkbutton.invalid check {
             border: solid #d83737;
             background-color: #d83737;
             color: #fff;
@@ -174,16 +190,25 @@ class HUDSettingsWindow(Gtk.Window):
         self.entry1.set_visible(use_cw)
         self.units1.set_visible(use_cw)
 
+    def on_shortcut_clicked(self, widget):
+        keystr = getkey_dialog.ask_for_key(previous_key=get_string('org.mate.hud', None, 'shortcut'), screen=widget.get_screen(), parent=widget.get_toplevel())
+        if not keystr:
+            return
+        self.buttonx.set_label(keystr)
+        self.selection_changed(self.buttonx)
+
     def reset_to_defaults(self, button):
         logging.info("Resetting all settings to default")
         settings = Gio.Settings.new('org.mate.hud')
-        keys = [ 'hud-monitor', 'location', 'rofi-theme', 'menu-separator', 'custom-width' ]
+        keys = [ 'shortcut', 'hud-monitor', 'location', 'rofi-theme', 'menu-separator', 'custom-width' ]
         for key in keys:
             settings.reset(key)
 
     def apply_changes(self, button):
         logging.info("Applying changes")
         settings = Gio.Settings.new('org.mate.hud')
+        settings.set_string('shortcut', self.buttonx.get_label())
+
         settings.set_string('hud-monitor', self.sel2.get_active_text())
 
         settings.set_string('location', self.sel3.get_active_text())
@@ -218,7 +243,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.checkbutton4, self.entry4 ]
+        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.checkbutton4, self.entry4 ]
         for f in fields:
             self.selection_changed( f )
 
@@ -227,6 +252,9 @@ class HUDSettingsWindow(Gtk.Window):
 
         changed = False
         field_type =  type(field).__name__
+        if field_type == 'Button':
+            print( field.get_name() )
+            changed = ( field.get_label() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         if field_type == 'ComboBoxText' :
             changed = ( field.get_active_text() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         elif field_type == 'Entry' :
@@ -275,6 +303,9 @@ class HUDSettingsWindow(Gtk.Window):
 
     def reload_view(self, key=None):
         logging.info("reloading view" + ( " for " + key if key else "" ) )
+
+        if not key or key == 'shortcut':
+            self.buttonx.set_label( get_string( 'org.mate.hud', None, 'shortcut' ) )
 
         if not key or key == 'rofi-theme':
             themes = []
@@ -335,6 +366,7 @@ if __name__ == "__main__":
     win = HUDSettingsWindow()
     win.connect("destroy", Gtk.main_quit)
     settings = Gio.Settings.new("org.mate.hud")
+    settings.connect("changed::shortcut", win.reload_view_on_change)
     settings.connect("changed::rofi-theme", win.reload_view_on_change)
     settings.connect("changed::hud-monitor", win.reload_view_on_change)
     settings.connect("changed::location", win.reload_view_on_change)
