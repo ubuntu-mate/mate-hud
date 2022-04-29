@@ -38,15 +38,6 @@ shortcut by default.
 `mate-hud` includes a small GUI for configuring settings: `hud-settings.py`
 which should show up in your applications menu.
 
-Currently you have to set the shortcut manually with `gsettings` or `dconf-editor`
-But should be configurable in the GUI soon.
-
-  * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
-
-```
-gsettings set org.mate.hud shortcut <SHORTCUT>
-```
-
 ### Themes
 
 `mate-hud.py` uses the `mate-hud-rounded` theme by default.
