@@ -15,7 +15,7 @@ def constant(f):
     def fget(self):
         return f()
     return property(fget, fset)
-    
+
 class Defaults(object):
     @constant
     def THEME():
@@ -32,7 +32,7 @@ class Defaults(object):
     @constant
     def LOCATION():
         return 'north west'
-        
+
     @constant
     def LOCATION_RTL():
         return 'north east'
@@ -98,6 +98,17 @@ def validate_custom_width(custom_width):
             pass
     return False
 
+def validate_menu_separator( menu_separator ):
+    if menu_separator == 'default' or len(menu_separator) == 1:
+        return True
+    if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
+        try:
+            chr(int(menu_separator, 16))
+            return True
+        except:
+            pass
+    return False
+
 def get_custom_width():
     custom_width = get_string('org.mate.hud', None, 'custom-width')
     if validate_custom_width(custom_width):
@@ -106,7 +117,7 @@ def get_custom_width():
         u = re.sub(r'^[0-9]+(\.[0-9]+)?', '', custom_width)
         if u == '':
             u = 'px'
-        return [ w, u ]
+        return [ not ( w == '0' and u == 'px' ), w, u ]
     raise ValueError( "Invalid custom width specified" )
 
 def use_custom_width():
@@ -121,15 +132,17 @@ def use_custom_width():
 def get_menu_separator():
     default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
     menu_separator = get_string('org.mate.hud', None, 'menu-separator')
+    if menu_separator == 'default':
+        return [ False, default ]
     if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
         try:
-            return chr(int(menu_separator, 16))
+            return [ True, chr(int(menu_separator, 16)) ]
         except:
-            return default
+            return [ True, default ]
     elif len(menu_separator) == 1:
-        return menu_separator
+        return [ True, menu_separator ]
     else:
-        return default
+        return [ True, default ]
 
 def monitor_rofi_argument(monitor):
     arguments = { 'window': '-2', 'monitor': '-1' }
