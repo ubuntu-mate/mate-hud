@@ -308,21 +308,7 @@ class HUDSettingsWindow(Gtk.Window):
             self.buttonx.set_label( get_string( 'org.mate.hud', None, 'shortcut' ) )
 
         if not key or key == 'rofi-theme':
-            themes = []
-            theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
-                           pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
-            for directory in theme_dirs:
-                for filename in os.listdir(directory):
-                    f = os.path.join(directory, filename)
-                    # checking if it is a file
-                    if os.path.isfile(f):
-                        if filename[-5:] == '.rasi':
-                            theme = filename[:-5]
-                            if theme not in themes:
-                                themes.append( theme )
-            def sort_themes(a):
-                return a.lower()
-            themes.sort(key=sort_themes)
+            themes = get_theme_list(sort=True)
             self.sel0.remove_all()
             for u in range(len(themes)):
                 self.sel0.insert(u, str(u), themes[u])

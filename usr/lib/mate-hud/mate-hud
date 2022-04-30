@@ -926,18 +926,7 @@ if __name__ == "__main__":
         default_theme = 'mate-hud-rounded'
         rofi_theme = settings.get_string("rofi-theme")
 
-        themes = []
-        theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
-                       pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
-        for directory in theme_dirs:
-            for filename in os.listdir(directory):
-                f = os.path.join(directory, filename)
-                # checking if it is a file
-                if os.path.isfile(f):
-                    if filename[-5:] == '.rasi':
-                        theme = filename[:-5]
-                        if theme not in themes:
-                            themes.append( theme )
+        themes = get_theme_list()
         if not rofi_theme in themes:
             logging.info( '%s not found as a valid rofi theme, defaulting to %s' % ( rofi_theme, default_theme ) )
             rofi_theme = default_theme

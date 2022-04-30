@@ -184,3 +184,22 @@ def isrtl():
     style_context = window.get_style_context()
     state = style_context.get_state()
     return state & Gtk.StateFlags.DIR_RTL
+
+def get_theme_list(sort=False):
+    def sort_themes(theme_name):
+        return theme_name.lower()
+
+    themes = []
+    theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
+                   pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
+    for directory in theme_dirs:
+        for filename in os.listdir(directory):
+            f = os.path.join(directory, filename)
+            # checking if it is a file
+            if os.path.isfile(f) and filename[-5:] == '.rasi':
+                theme = filename[:-5]
+                if theme not in themes:
+                    themes.append( theme )
+    if sort:
+        themes.sort(key=sort_themes)
+    return themes
