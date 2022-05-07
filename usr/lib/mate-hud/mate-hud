@@ -249,20 +249,8 @@ def get_menu(menuKeys):
     # color information from the GTK theme
     if rofi_theme in mate_hud_themes:
         # Get the currently active font.
-        font_name = ''
-        if 'MATE' in desktop_name:
-            font_name = get_string('org.mate.interface', None, 'font-name')
-        elif 'XFCE' in desktop_name:
-            try:
-                font_name = Xfconf.Channel.new_with_property_base("xsettings", "/Gtk").get_string("/FontName", "")
-            except:
-                logging.debug('running XFCE, but xfconf gi repository not available')
-        elif 'X-Cinnamon' in desktop_name:
-            font_name = get_string('org.cinnamon.desktop.interface', None, 'font-name')
-        elif 'Budgie:GNOME' in desktop_name:
-            font_name = get_string('org.gnome.desktop.interface', None, 'font-name')
-        if font_name:
-            cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
+        font_name = Gtk.Settings.get_default().get_property( 'gtk-font-name' )
+        cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
 
         window = Gtk.Window()
         style_context = window.get_style_context()
