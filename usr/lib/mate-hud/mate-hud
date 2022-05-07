@@ -87,11 +87,11 @@ class EWMH:
 
 def format_path(path):
     #logging.debug('Path:%s', path)
-    result = path.replace('>', '', 1)
-    result = result.replace('Root > ', '')
-    result = result.replace('Label Empty > ', '')
+    result = path.replace(PATH_SEPARATOR, '', 1)
+    result = result.replace('Root ' + PATH_SEPARATOR + ' ', '')
+    result = result.replace('Label Empty ' + PATH_SEPARATOR + ' ', '')
     result = result.replace('_', '')
-    return result.replace('>', u'\u0020\u0020\u00BB\u0020\u0020')
+    return result.replace(PATH_SEPARATOR, '  ' + PATH_SEPARATOR + '  ')
 
 def get_bool(schema, path, key):
     if path:
@@ -355,7 +355,7 @@ def try_appmenu_interface(window_id):
         item_children = item[2]
 
         if 'label' in item_props:
-            new_path = path + " > " + item_props['label']
+            new_path = path + " " + PATH_SEPARATOR + " " + item_props['label']
         else:
             new_path = path
 
@@ -443,7 +443,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         # There theoretically could be a section that is also a submenu, so we have to handel this via queue
                         # submenus are more important than sections
                         if ':submenu' in element:
-                            queue(element[':submenu'][0], None, path + " > " + element['label'])
+                            queue(element[':submenu'][0], None, path + " " + PATH_SEPARATOR + " " + element['label'])
                             # We ignore whether or not a submenu points to a specific index, shouldn't matter because of the way the menu got exportet
                             # Worst that can happen are some duplicates
                             # Also we don't Start() directly which could mean we get nothing under this label but this shouldn't really happen because there shouldn't be two submenus
@@ -458,7 +458,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                     elif 'action' in element:
                         # This is pretty straightforward:
                         menu_action = str(element['action']).split(".",1)[1]
-                        action_path = format_path(path + " > " + element['label'])
+                        action_path = format_path(path + " " + PATH_SEPARATOR + " " + element['label'])
                         gtk_menubar_action_dict[action_path] = menu_action
                         if 'target' in element:
                             gtk_menubar_action_target_dict[action_path] = element['target']
@@ -535,6 +535,10 @@ def hud(widget, keystr, user_data):
     logging.debug('_GTK_APPLICATION_OBJECT_PATH: %s', gtk_app_object_path)
     logging.debug('_GTK_WINDOW_OBJECT_PATH: %s', gtk_win_object_path)
     logging.debug('_UNITY_OBJECT_PATH: %s', gtk_unity_object_path)
+
+    # Get the menu path separator
+    global PATH_SEPARATOR
+    PATH_SEPARATOR = u'\u25c2' if isrtl() else u'\u25b8'
 
     logging.debug('Trying AppMenu')
     registrar_running = process_running("appmenu-registrar")
@@ -766,6 +770,12 @@ def get_rofi_theme():
     except:
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % rofi_theme)
     return rofi_theme
+
+def isrtl():
+    window = Gtk.Window()
+    style_context = window.get_style_context()
+    state = style_context.get_state()
+    return state & Gtk.StateFlags.DIR_RTL
 
 def remove_autostart(filename):
     config_dir = GLib.get_user_config_dir()
