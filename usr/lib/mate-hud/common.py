@@ -179,6 +179,14 @@ def use_custom_separator():
     sep = get_menu_separator()
     return not ( sep == default or sep == 'default' )
 
+def get_recently_used_max():
+    recently_used_max = 0
+    try:
+        recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')
+    except:
+        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % recently_used_max)
+    return recently_used_max
+
 def isrtl():
     window = Gtk.Window()
     style_context = window.get_style_context()

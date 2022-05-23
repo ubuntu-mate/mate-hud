@@ -6,6 +6,7 @@ gi.require_version("Gtk", "3.0")
 
 import configparser
 import dbus
+import json
 import logging
 import os
 import pkgconfig
@@ -47,6 +48,12 @@ class Store(object):
             cls.instance.location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
             cls.instance.custom_width = '0'
             cls.instance.menu_separator = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
+            cls.instance.recently_used = None
+            try:
+                cls.instance.recently_used = json.loads( get_string( 'org.mate.hud', None, 'recently-used' ) )
+            except:
+                cls.instance.recently_used = { }
+            cls.instance.recently_used_max = get_number( 'org.mate.hud', None, 'recently-used-max' )
         return cls.instance
 
 class EWMH:
@@ -397,16 +404,31 @@ def get_menu(menuKeys):
     if not menuKeys:
         return ''
 
-    menu_string, *menu_items = menuKeys
-    for menu_item in menu_items:
-        menu_string += '\n' + menu_item
+    store = Store()
+
+    ewmh = EWMH()
+    win = ewmh.getActiveWindow()
+    win_name = ewmh._getProperty('WM_CLASS', win)
+    win_name = bytes(bytearray(win_name)[0:bytearray(win_name).index(0)]).decode('utf-8')
+    menu_recently_used = []
+    if win_name in store.recently_used.keys():
+        menu_recently_used = store.recently_used.get(win_name)
+    def sort_menu(item):
+        item_fmt = item.replace(Store().menu_separator, '>').lstrip()
+        if item_fmt in menu_recently_used:
+            return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
+        else:
+            return item
+    menuKeys.sort(key=sort_menu)
+    if win_name in store.recently_used.keys():
+        menuKeys.insert(len(menu_recently_used), u'\u2015' * 100)
+        menuKeys.insert(0, 'Recently Used   ' + u'\u2015' * 100)
+    menu_string = '\n'.join(menuKeys)
 
     # Allow closing the HUD with the same modifier key that opens it
     shortcut = get_shortcut()
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
     shortcut = '' if modifiers else ',' + shortcut
-
-    store = Store()
 
     cmd = ['rofi', '-dmenu', '-i',
            '-p', 'HUD',
@@ -415,7 +437,6 @@ def get_menu(menuKeys):
            '-separator-style', 'none',
            '-hide-scrollbar',
            '-click-to-exit',
-           '-levenshtein-sort',
            '-line-padding', '2',
            '-kb-cancel', 'Escape' + shortcut,
            '-sync', # withhold display until menu entries are ready
@@ -441,6 +462,17 @@ def get_menu(menuKeys):
     menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
     menu_cmd.stdin.close()
 
+    # Add the menu result to the list of recently used commands for the application
+    if menu_result:
+        result_fmt = menu_result.replace(Store().menu_separator, '>').lstrip()
+        if win_name not in store.recently_used.keys():
+            store.recently_used.update({ win_name: [] })
+        if result_fmt in store.recently_used.get(win_name):
+            store.recently_used.get(win_name).remove(result_fmt)
+        store.recently_used.get(win_name).insert(0, result_fmt)
+        if store.recently_used_max > 0:
+            store.recently_used[win_name] = store.recently_used.get(win_name)[:store.recently_used_max]
+        Gio.Settings.new('org.mate.hud').set_string('recently-used', json.dumps(store.recently_used))
     return menu_result
 
 """
@@ -992,6 +1024,13 @@ if __name__ == "__main__":
             logging.info( "Invalid menu separator '%s'specified. Using default '%s'" % ( menu_separator, default ) )
             store.menu_separator = default
 
+    def change_recently_used_max(schema, key):
+        store.recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')
+        if store.recently_used_max > 0:
+            for key in store.recently_used.keys():
+                store.recently_used[key] = store.recently_used.get(key)[:store.recently_used_max]
+            settings.set_string('recently-used', json.dumps(store.recently_used))
+
     store = Store()
 
     enabled = False
@@ -1015,6 +1054,7 @@ if __name__ == "__main__":
         settings.connect("changed::location", change_location)
         settings.connect("changed::custom-width", change_custom_width)
         settings.connect("changed::menu-separator", change_menu_separator)
+        settings.connect("changed::recently-used-max", change_recently_used_max)
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
@@ -1022,7 +1062,7 @@ if __name__ == "__main__":
         store.dpi = get_display_dpi()
         change_custom_width(None, None)
         change_menu_separator(None, None)
-
+        change_recently_used_max(None, None)
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:

@@ -44,6 +44,10 @@ class HUDCurrentSettings():
         return get_string( 'org.mate.hud', None, 'hud-monitor' )
 
     @property
+    def recently_used_max(self):
+        return get_number( 'org.mate.hud', None, 'recently-used-max' )
+
+    @property
     def use_custom_separator(self):
         return get_menu_separator()[0]
 
@@ -60,7 +64,8 @@ class HUDSettingsWindow(Gtk.Window):
                                     'combobox-hud-monitor': 'hud_monitor',
                                     'combobox-location': 'location',
                                     'checkbutton-use-custom-separator': 'use_custom_separator',
-                                    'entry-custom-separator': 'custom_separator' }
+                                    'entry-custom-separator': 'custom_separator',
+                                    'entry-recently-used-max': 'recently_used_max' }
     valid_units = [ 'px', 'em', 'ch', '%' ]
 
     def __init__(self):
@@ -71,8 +76,10 @@ class HUDSettingsWindow(Gtk.Window):
         # Would be nice to have our own icon to use, but for now...
         self.set_icon_name("preferences-system")
 
-        box_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=50)
         self.add(box_outer)
+
+        box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         labelx = Gtk.Label(label="Keyboard Shortcut: ", xalign=0, tooltip_text="Keyboard shortcut to activate the HUD")
@@ -80,14 +87,14 @@ class HUDSettingsWindow(Gtk.Window):
         self.buttonx = Gtk.Button(name='button-keyboard-shortcut')
         self.buttonx.connect("clicked", self.on_shortcut_clicked)
         hbox.pack_start(self.buttonx, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label0 = Gtk.Label(label="HUD Theme: ", xalign=0, tooltip_text="HUD theme. Default is 'mate-hud-rounded'\nThe mate-hud* themes attempt to match the system font and colors from the GTK theme.")
         hbox.pack_start(label0, True, True, 0)
         self.sel0 = Gtk.ComboBoxText(name='combobox-rofi-theme')
         hbox.pack_start(self.sel0, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label1 = Gtk.Label(label="Custom Width: ", xalign=0, tooltip_text="Override the width of the HUD specified in the theme")
@@ -104,7 +111,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.units1.set_active(0)
         hbox_.pack_start(self.units1, True, True, 0)
         hbox.pack_start(hbox_, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label2 = Gtk.Label(label="Attach HUD to: ", xalign=0, tooltip_text="Where to attach the HUD.\nDefault is to the current window.\nIf set to monitor, the HUD will try to avoid overlapping any panels.")
@@ -113,7 +120,7 @@ class HUDSettingsWindow(Gtk.Window):
         for u in range(len(HUD_DEFAULTS.VALID_MONITORS)):
             self.sel2.insert(u, str(u), HUD_DEFAULTS.VALID_MONITORS[u])
         hbox.pack_start(self.sel2, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label3 = Gtk.Label(label="HUD location: ", xalign=0, tooltip_text="How to position the HUD in relation to what is attached to (window or monitor).\n'default' is north west for LTR languages and north east for RTL languages.")
@@ -122,7 +129,7 @@ class HUDSettingsWindow(Gtk.Window):
         for u in range(len(HUD_DEFAULTS.VALID_LOCATIONS)):
             self.sel3.insert(u, str(u), HUD_DEFAULTS.VALID_LOCATIONS[u])
         hbox.pack_start(self.sel3, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         label4 = Gtk.Label(label="Custom Menu Separator: ", xalign=0, tooltip_text="Character to use to denote the menu heirarchy in the HUD.\nMust be one character or the unicode code point (in hex) of a single character\nor the word 'default': » for LTR languages and « for RTL languages")
@@ -134,19 +141,37 @@ class HUDSettingsWindow(Gtk.Window):
         self.entry4 = Gtk.Entry(xalign=1, max_length=8, width_chars=9, name='entry-custom-separator')
         hbox_.pack_start(self.entry4, True, True, 0)
         hbox.pack_start(hbox_, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
+        label5 = Gtk.Label(label="Max Recently Used Items: ", xalign=0, tooltip_text="Maximum number of recently used items to remember per application")
+        hbox.pack_start(label5, True, True, 0)
+        adjustment = Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=10, page_size=0, value=0)
+        self.entry5 = Gtk.SpinButton(xalign=1, name='entry-recently-used-max', adjustment=adjustment)
+        hbox.pack_start(self.entry5, False, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
+        label6 = Gtk.Label(label="Recently Used Item List: ", xalign=0, tooltip_text="Reset the recently used item list")
+        hbox.pack_start(label6, True, True, 0)
+        self.button_reset_recently_used = Gtk.Button(label="Reset")
+        self.button_reset_recently_used.connect("clicked", self.reset_recently_used)
+        hbox.pack_start(self.button_reset_recently_used, False, True, 0)
+        box_main.pack_start(hbox, True, True, 0)      
+
+        box_outer.pack_start(box_main, True, True, 0)
+
+        box_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         self.button_reset_to_defaults = Gtk.Button(label="Reset to defaults")
         self.button_reset_to_defaults.connect("clicked", self.reset_to_defaults)
-        hbox.pack_start(self.button_reset_to_defaults, True, True, 0)
-        self.button_reset = Gtk.Button(label="Reset")
+        box_buttons.pack_start(self.button_reset_to_defaults, True, True, 0)
+        self.button_reset = Gtk.Button(label="Clear Changes")
         self.button_reset.connect("clicked", self.reset_view)
-        hbox.pack_start(self.button_reset, True, True, 0)
+        box_buttons.pack_start(self.button_reset, True, True, 0)
         self.button_apply = Gtk.Button(label="Apply Changes")
         self.button_apply.connect("clicked", self.apply_changes)
-        hbox.pack_start(self.button_apply, False, True, 0)
-        box_outer.pack_start(hbox, True, True, 0)
+        box_buttons.pack_start(self.button_apply, False, True, 0)
+        box_outer.pack_start(box_buttons, True, True, 0)
 
     def show_all(self):
         super().show_all()
@@ -164,17 +189,23 @@ class HUDSettingsWindow(Gtk.Window):
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
         css = b"""
-        entry.changed, combobox.changed button, button.changed, checkbutton.changed check {
+        entry.changed, combobox.changed button, button.changed, spinbutton.changed entry, checkbutton.changed check {
             border: solid #1fced2;
             background-color: #1fced2;
             color: #000;
             border-width: 2px;
         }
-        entry.invalid, combobox.invalid button, button.invalid, checkbutton.invalid check {
+        spinbutton.changed {
+            color: #000
+        }
+        entry.invalid, combobox.invalid button, button.invalid, spinbutton.invalid entry, checkbutton.invalid check {
             border: solid #d83737;
             background-color: #d83737;
             color: #fff;
             border-width: 2px;
+        }
+        spinbutton.invalid {
+            color: #fff
         }
         """
         provider.load_from_data(css)
@@ -200,9 +231,13 @@ class HUDSettingsWindow(Gtk.Window):
     def reset_to_defaults(self, button):
         logging.info("Resetting all settings to default")
         settings = Gio.Settings.new('org.mate.hud')
-        keys = [ 'shortcut', 'hud-monitor', 'location', 'rofi-theme', 'menu-separator', 'custom-width' ]
+        keys = [ 'shortcut', 'hud-monitor', 'location', 'rofi-theme', 'menu-separator', 'custom-width', 'recently-used-max' ]
         for key in keys:
             settings.reset(key)
+
+    def reset_recently_used(self, button):
+        logging.info("Resetting recently used menu entry list")
+        Gio.Settings.new('org.mate.hud').reset('recently-used')
 
     def apply_changes(self, button):
         logging.info("Applying changes")
@@ -240,10 +275,13 @@ class HUDSettingsWindow(Gtk.Window):
                 logging.error( "Invalid custom width specified, not setting new value." )
         else:
             settings.set_string('custom-width', '0')
+
+        settings.set_int('recently-used-max', self.entry5.get_value_as_int())
+
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.checkbutton4, self.entry4 ]
+        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.checkbutton4, self.entry4, self.entry5 ]
         for f in fields:
             self.selection_changed( f )
 
@@ -255,11 +293,14 @@ class HUDSettingsWindow(Gtk.Window):
         if field_type == 'Button':
             print( field.get_name() )
             changed = ( field.get_label() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
-        if field_type == 'ComboBoxText' :
+        elif field_type == 'SpinButton':
+            print( field.get_name() )
+            changed = ( field.get_value_as_int() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
+        elif field_type == 'ComboBoxText' :
             changed = ( field.get_active_text() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         elif field_type == 'Entry' :
             changed = ( field.get_text() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
-        if field_type == 'CheckButton' :
+        elif field_type == 'CheckButton' :
             changed = ( field.get_active() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         if changed == True:
             style_context.add_class('changed')
@@ -293,6 +334,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.sel3.connect("changed", self.selection_changed)
         self.checkbutton4.connect("toggled", self.selection_changed )
         self.entry4.connect("changed", self.selection_changed)
+        self.entry5.connect("value-changed", self.selection_changed)
 
     def reload_view_on_change(self, schema, key):
         logging.info( "Reloading view in response to key change." )
@@ -345,6 +387,9 @@ class HUDSettingsWindow(Gtk.Window):
             self.checkbutton4.set_active(use_cms)
             self.entry4.set_text(sep)
 
+        if not key or key == 'recently-used-max':
+            self.entry5.set_value(get_recently_used_max())
+
 if __name__ == "__main__":
     setproctitle.setproctitle('hud-settings')
     logging.basicConfig(level=logging.INFO)
@@ -358,6 +403,7 @@ if __name__ == "__main__":
     settings.connect("changed::location", win.reload_view_on_change)
     settings.connect("changed::custom-width", win.reload_view_on_change)
     settings.connect("changed::menu-separator", win.reload_view_on_change)
+    settings.connect("changed::recently-used-max", win.reload_view_on_change)
 
     win.show_all()
     Gtk.main()

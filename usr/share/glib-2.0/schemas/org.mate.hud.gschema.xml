@@ -87,6 +87,23 @@
         Invalid: '--' (too many characters), '25B8B8' (outside of valid range)
       </description>
     </key>
+    <key type="s" name="recently-used">
+      <default>""</default>
+      <summary>JSON dictionary of recently selected menu items per application</summary>
+      <description>
+        JSON dictionary of recently selected menu items per application
+      </description>
+    </key>
+    <key type="i" name="recently-used-max">
+      <default>10</default>
+      <range min='0'/>
+      <summary>The maximum number of recently used menu entries to save per application</summary>
+      <description>
+        The maximum number of recently used menu entries to save per application
+
+        0 is interpreted as unlimited entries.
+      </description>
+    </key>
     <key type="i" name="tap-timeout">
       <default>250</default>
       <summary>The timeout between key press and release to determine if the user meant to open MATE HUD</summary>
