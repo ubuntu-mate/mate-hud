@@ -52,7 +52,8 @@ class HUDCurrentSettings():
         return get_string( 'org.mate.hud', None, 'menu-separator' )
 
 class HUDSettingsWindow(Gtk.Window):
-    widget_name_to_property_map = { 'button-keyboard-shortcut': 'shortcut',
+    widget_name_to_property_map = { 'combobox-keyboard-shortcut': 'shortcut',
+                                    'button-keyboard-shortcut': 'shortcut',
                                     'combobox-rofi-theme': 'rofi_theme',
                                     'checkbutton-use-custom-width': 'use_custom_width',
                                     'entry-custom-width': 'custom_width',
@@ -62,6 +63,7 @@ class HUDSettingsWindow(Gtk.Window):
                                     'combobox-menu-separator': 'menu_separator',
                                     'entry-recently-used-max': 'recently_used_max' }
     valid_units = [ 'px', 'em', 'ch', '%' ]
+    single_modifier_keys = [ 'Alt_L', 'Alt_R', 'Ctrl_L', 'Ctrl_R', 'Super_L', 'Super_R' ]
 
     def __init__(self):
         super().__init__(title="HUD Settings")
@@ -79,9 +81,16 @@ class HUDSettingsWindow(Gtk.Window):
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         labelx = Gtk.Label(label="Keyboard Shortcut: ", xalign=0, tooltip_text="Keyboard shortcut to activate the HUD")
         hbox.pack_start(labelx, True, True, 0)
+        hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.comboboxx = Gtk.ComboBoxText(name='combobox-keyboard-shortcut')
+        for u in range(len(self.single_modifier_keys)):
+            self.comboboxx.insert(u, str(u), self.single_modifier_keys[u])
+        self.comboboxx.insert(len(self.single_modifier_keys), str(len(self.single_modifier_keys)), "Custom: ")
+        hbox_.pack_start(self.comboboxx, False, True, 0)
         self.buttonx = Gtk.Button(name='button-keyboard-shortcut')
         self.buttonx.connect("clicked", self.on_shortcut_clicked)
-        hbox.pack_start(self.buttonx, False, True, 0)
+        hbox_.pack_start(self.buttonx, False, True, 0)
+        hbox.pack_start(hbox_, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
@@ -96,7 +105,7 @@ class HUDSettingsWindow(Gtk.Window):
         hbox.pack_start(label1, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.checkbutton1 = Gtk.CheckButton(name='checkbutton-use-custom-width')
-        self.checkbutton1.connect("toggled", self.use_custom_theme_toggled)
+        self.checkbutton1.connect("toggled", self.use_custom_width_toggled)
         hbox_.pack_start(self.checkbutton1, True, True, 0)
         self.entry1 = Gtk.Entry(name='entry-custom-width', xalign=1, max_length=4, width_chars=5)
         hbox_.pack_start(self.entry1, True, True, 0)
@@ -149,7 +158,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.button_reset_recently_used = Gtk.Button(label="Reset")
         self.button_reset_recently_used.connect("clicked", self.reset_recently_used)
         hbox.pack_start(self.button_reset_recently_used, False, True, 0)
-        box_main.pack_start(hbox, True, True, 0)      
+        box_main.pack_start(hbox, True, True, 0)
 
         box_outer.pack_start(box_main, True, True, 0)
 
@@ -207,7 +216,8 @@ class HUDSettingsWindow(Gtk.Window):
         self.sel4.set_editable(use_cms)
         self.sel4.set_visible(use_cms)
 
-    def use_custom_theme_toggled(self, button):
+
+    def use_custom_width_toggled(self, button):
         use_cw = button.get_active()
         self.entry1.set_editable(use_cw)
         self.entry1.set_visible(use_cw)
@@ -260,14 +270,24 @@ class HUDSettingsWindow(Gtk.Window):
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.sel4, self.entry5 ]
+        fields = [ self.comboboxx, self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.sel4, self.entry5 ]
         for f in fields:
             self.selection_changed( f )
+
+    def shortcut_selector_changed( self, field ):
+        use_custom = ( field.get_active_text() == 'Custom: ' )
+        if not use_custom:
+            self.buttonx.set_label(field.get_active_text())
+            self.selection_changed(self.buttonx)
+        self.buttonx.set_visible( use_custom )
+        self.selection_changed(field)
 
     def selection_changed( self, field ):
         style_context = field.get_style_context()
 
         changed = False
+        if field.get_name() == 'combobox-keyboard-shortcut' and field.get_active_text() == 'Custom: ':
+            field = self.buttonx
         field_type =  type(field).__name__
         if field_type == 'Button':
             print( field.get_name() )
@@ -311,6 +331,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.sel3.connect("changed", self.selection_changed)
         self.sel4.connect("changed", self.selection_changed)
         self.entry5.connect("value-changed", self.selection_changed)
+        self.comboboxx.connect("changed", self.shortcut_selector_changed)
 
     def reload_view_on_change(self, schema, key):
         logging.info( "Reloading view in response to key change." )
@@ -323,6 +344,13 @@ class HUDSettingsWindow(Gtk.Window):
         logging.info("reloading view" + ( " for " + key if key else "" ) )
 
         if not key or key == 'shortcut':
+            shortcut = get_string( 'org.mate.hud', None, 'shortcut' )
+            if shortcut in self.single_modifier_keys:
+                self.comboboxx.set_active(self.single_modifier_keys.index(shortcut))
+                self.buttonx.set_visible(False)
+            else:
+                self.comboboxx.set_active(self.single_modifier_keys.index('Custom: '))
+                self.buttonx.set_visible(True)
             self.buttonx.set_label( get_string( 'org.mate.hud', None, 'shortcut' ) )
 
         if not key or key == 'rofi-theme':
