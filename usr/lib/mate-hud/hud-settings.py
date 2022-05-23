@@ -79,82 +79,82 @@ class HUDSettingsWindow(Gtk.Window):
         box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        labelx = Gtk.Label(label="Keyboard Shortcut: ", xalign=0, tooltip_text="Keyboard shortcut to activate the HUD")
-        hbox.pack_start(labelx, True, True, 0)
+        lbl_shortcut = Gtk.Label(label="Keyboard Shortcut: ", xalign=0, tooltip_text="Keyboard shortcut to activate the HUD")
+        hbox.pack_start(lbl_shortcut, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.comboboxx = Gtk.ComboBoxText(name='combobox-keyboard-shortcut')
+        self.cbx_shortcut = Gtk.ComboBoxText(name='combobox-keyboard-shortcut')
         for u in range(len(self.single_modifier_keys)):
-            self.comboboxx.insert(u, str(u), self.single_modifier_keys[u])
-        self.comboboxx.insert(len(self.single_modifier_keys), str(len(self.single_modifier_keys)), "Custom: ")
-        hbox_.pack_start(self.comboboxx, False, True, 0)
-        self.buttonx = Gtk.Button(name='button-keyboard-shortcut')
-        self.buttonx.connect("clicked", self.on_shortcut_clicked)
-        hbox_.pack_start(self.buttonx, False, True, 0)
+            self.cbx_shortcut.insert(u, str(u), self.single_modifier_keys[u])
+        self.cbx_shortcut.insert(len(self.single_modifier_keys), str(len(self.single_modifier_keys)), "Custom: ")
+        hbox_.pack_start(self.cbx_shortcut, False, True, 0)
+        self.btn_shortcut = Gtk.Button(name='button-keyboard-shortcut')
+        self.btn_shortcut.connect("clicked", self.on_shortcut_clicked)
+        hbox_.pack_start(self.btn_shortcut, False, True, 0)
         hbox.pack_start(hbox_, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label0 = Gtk.Label(label="HUD Theme: ", xalign=0, tooltip_text="HUD theme. Default is 'mate-hud-rounded'\nThe mate-hud* themes attempt to match the system font and colors from the GTK theme.")
-        hbox.pack_start(label0, True, True, 0)
-        self.sel0 = Gtk.ComboBoxText(name='combobox-rofi-theme')
-        hbox.pack_start(self.sel0, False, True, 0)
+        lbl_theme = Gtk.Label(label="HUD Theme: ", xalign=0, tooltip_text="HUD theme. Default is 'mate-hud-rounded'\nThe mate-hud* themes attempt to match the system font and colors from the GTK theme.")
+        hbox.pack_start(lbl_theme, True, True, 0)
+        self.cbx_theme = Gtk.ComboBoxText(name='combobox-rofi-theme')
+        hbox.pack_start(self.cbx_theme, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label1 = Gtk.Label(label="Custom Width: ", xalign=0, tooltip_text="Override the width of the HUD specified in the theme")
-        hbox.pack_start(label1, True, True, 0)
+        lbl_width = Gtk.Label(label="Custom Width: ", xalign=0, tooltip_text="Override the width of the HUD specified in the theme")
+        hbox.pack_start(lbl_width, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.checkbutton1 = Gtk.CheckButton(name='checkbutton-use-custom-width')
-        self.checkbutton1.connect("toggled", self.use_custom_width_toggled)
-        hbox_.pack_start(self.checkbutton1, True, True, 0)
-        self.entry1 = Gtk.Entry(name='entry-custom-width', xalign=1, max_length=4, width_chars=5)
-        hbox_.pack_start(self.entry1, True, True, 0)
-        self.units1 = Gtk.ComboBoxText(name='combobox-custom-width-units')
+        self.ckb_width = Gtk.CheckButton(name='checkbutton-use-custom-width')
+        self.ckb_width.connect("toggled", self.use_custom_width_toggled)
+        hbox_.pack_start(self.ckb_width, True, True, 0)
+        self.ent_width = Gtk.Entry(name='entry-custom-width', xalign=1, max_length=4, width_chars=5)
+        hbox_.pack_start(self.ent_width, True, True, 0)
+        self.cbx_units_width = Gtk.ComboBoxText(name='combobox-custom-width-units')
         for u in range(len(self.valid_units)):
-            self.units1.insert(u, str(u), self.valid_units[u])
-        self.units1.set_active(0)
-        hbox_.pack_start(self.units1, True, True, 0)
+            self.cbx_units_width.insert(u, str(u), self.valid_units[u])
+        self.cbx_units_width.set_active(0)
+        hbox_.pack_start(self.cbx_units_width, True, True, 0)
         hbox.pack_start(hbox_, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label2 = Gtk.Label(label="Attach HUD to: ", xalign=0, tooltip_text="Where to attach the HUD.\nDefault is to the current window.\nIf set to monitor, the HUD will try to avoid overlapping any panels.")
-        hbox.pack_start(label2, True, True, 0)
-        self.sel2 = Gtk.ComboBoxText(name='combobox-hud-monitor')
+        lbl_hud_monitor = Gtk.Label(label="Attach HUD to: ", xalign=0, tooltip_text="Where to attach the HUD.\nDefault is to the current window.\nIf set to monitor, the HUD will try to avoid overlapping any panels.")
+        hbox.pack_start(lbl_hud_monitor, True, True, 0)
+        self.cbx_monitor = Gtk.ComboBoxText(name='combobox-hud-monitor')
         for u in range(len(HUD_DEFAULTS.VALID_MONITORS)):
-            self.sel2.insert(u, str(u), HUD_DEFAULTS.VALID_MONITORS[u])
-        hbox.pack_start(self.sel2, False, True, 0)
+            self.cbx_monitor.insert(u, str(u), HUD_DEFAULTS.VALID_MONITORS[u])
+        hbox.pack_start(self.cbx_monitor, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label3 = Gtk.Label(label="HUD location: ", xalign=0, tooltip_text="How to position the HUD in relation to what is attached to (window or monitor).\n'default' is north west for LTR languages and north east for RTL languages.")
-        hbox.pack_start(label3, True, True, 0)
-        self.sel3 = Gtk.ComboBoxText(name='combobox-location')
+        lbl_location = Gtk.Label(label="HUD location: ", xalign=0, tooltip_text="How to position the HUD in relation to what is attached to (window or monitor).\n'default' is north west for LTR languages and north east for RTL languages.")
+        hbox.pack_start(lbl_location, True, True, 0)
+        self.cbx_location = Gtk.ComboBoxText(name='combobox-location')
         for u in range(len(HUD_DEFAULTS.VALID_LOCATIONS)):
-            self.sel3.insert(u, str(u), HUD_DEFAULTS.VALID_LOCATIONS[u])
-        hbox.pack_start(self.sel3, False, True, 0)
+            self.cbx_location.insert(u, str(u), HUD_DEFAULTS.VALID_LOCATIONS[u])
+        hbox.pack_start(self.cbx_location, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label4 = Gtk.Label(label="Menu Separator: ", xalign=0, tooltip_text="Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)")
-        hbox.pack_start(label4, True, True, 0)
-        self.sel4 = Gtk.ComboBoxText(name='combobox-menu-separator')
+        lbl_separator = Gtk.Label(label="Menu Separator: ", xalign=0, tooltip_text="Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)")
+        hbox.pack_start(lbl_separator, True, True, 0)
+        self.cbx_separator = Gtk.ComboBoxText(name='combobox-menu-separator')
         for u in range(len(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS)):
-            self.sel4.insert(u, str(u), HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[u])
-        hbox.pack_start(self.sel4, False, True, 0)
+            self.cbx_separator.insert(u, str(u), HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[u])
+        hbox.pack_start(self.cbx_separator, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label5 = Gtk.Label(label="Max Recently Used Items: ", xalign=0, tooltip_text="Maximum number of recently used items to remember per application")
-        hbox.pack_start(label5, True, True, 0)
+        lbl_recent_max = Gtk.Label(label="Max Recently Used Items: ", xalign=0, tooltip_text="Maximum number of recently used items to remember per application")
+        hbox.pack_start(lbl_recent_max, True, True, 0)
         adjustment = Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=10, page_size=0, value=0)
-        self.entry5 = Gtk.SpinButton(xalign=1, name='entry-recently-used-max', adjustment=adjustment)
-        hbox.pack_start(self.entry5, False, True, 0)
+        self.sb_recent_max = Gtk.SpinButton(xalign=1, name='entry-recently-used-max', adjustment=adjustment)
+        hbox.pack_start(self.sb_recent_max, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label6 = Gtk.Label(label="Recently Used Item List: ", xalign=0, tooltip_text="Reset the recently used item list")
-        hbox.pack_start(label6, True, True, 0)
+        lbl_recent_reset = Gtk.Label(label="Recently Used Item List: ", xalign=0, tooltip_text="Reset the recently used item list")
+        hbox.pack_start(lbl_recent_reset, True, True, 0)
         self.button_reset_recently_used = Gtk.Button(label="Reset")
         self.button_reset_recently_used.connect("clicked", self.reset_recently_used)
         hbox.pack_start(self.button_reset_recently_used, False, True, 0)
@@ -183,6 +183,7 @@ class HUDSettingsWindow(Gtk.Window):
         ## Add custom style classes for invalid or changed cells
         ## I don't really like doing it this way, but adding the
         ## error or warning class to the fields didn't do a good
+        ## enough job indicating there was a change / issue
         screen = Gdk.Screen.get_default()
         provider = Gtk.CssProvider()
         style_context = Gtk.StyleContext()
@@ -213,22 +214,22 @@ class HUDSettingsWindow(Gtk.Window):
 
     def use_custom_menu_separator_toggled(self, button):
         use_cms = button.get_active()
-        self.sel4.set_editable(use_cms)
-        self.sel4.set_visible(use_cms)
+        self.cbx_separator.set_editable(use_cms)
+        self.cbx_separator.set_visible(use_cms)
 
 
     def use_custom_width_toggled(self, button):
         use_cw = button.get_active()
-        self.entry1.set_editable(use_cw)
-        self.entry1.set_visible(use_cw)
-        self.units1.set_visible(use_cw)
+        self.ent_width.set_editable(use_cw)
+        self.ent_width.set_visible(use_cw)
+        self.cbx_units_width.set_visible(use_cw)
 
     def on_shortcut_clicked(self, widget):
         keystr = getkey_dialog.ask_for_key(previous_key=get_string('org.mate.hud', None, 'shortcut'), screen=widget.get_screen(), parent=widget.get_toplevel())
         if not keystr:
             return
-        self.buttonx.set_label(keystr)
-        self.selection_changed(self.buttonx)
+        self.btn_shortcut.set_label(keystr)
+        self.selection_changed(self.btn_shortcut)
 
     def reset_to_defaults(self, button):
         logging.info("Resetting all settings to default")
@@ -244,42 +245,42 @@ class HUDSettingsWindow(Gtk.Window):
     def apply_changes(self, button):
         logging.info("Applying changes")
         settings = Gio.Settings.new('org.mate.hud')
-        settings.set_string('shortcut', self.buttonx.get_label())
+        settings.set_string('shortcut', self.btn_shortcut.get_label())
 
-        settings.set_string('hud-monitor', self.sel2.get_active_text())
+        settings.set_string('hud-monitor', self.cbx_monitor.get_active_text())
 
-        settings.set_string('location', self.sel3.get_active_text())
+        settings.set_string('location', self.cbx_location.get_active_text())
 
-        if self.sel0.get_active_text().endswith(" (Invalid)"):
+        if self.cbx_theme.get_active_text().endswith(" (Invalid)"):
             settings.set_string('rofi-theme', HUD_DEFAULTS.THEME)
         else:
-            settings.set_string('rofi-theme', self.sel0.get_active_text())
+            settings.set_string('rofi-theme', self.cbx_theme.get_active_text())
 
-        settings.set_string('menu-separator', self.sel4.get_active_text())
+        settings.set_string('menu-separator', self.cbx_separator.get_active_text())
 
-        if self.checkbutton1.get_active():
-            if validate_custom_width(self.entry1.get_text()):
-                settings.set_string('custom-width', self.entry1.get_text() + self.units1.get_active_text())
+        if self.ckb_width.get_active():
+            if validate_custom_width(self.ent_width.get_text()):
+                settings.set_string('custom-width', self.ent_width.get_text() + self.cbx_units_width.get_active_text())
             else:
                 logging.error( "Invalid custom width specified, not setting new value." )
         else:
             settings.set_string('custom-width', '0')
 
-        settings.set_int('recently-used-max', self.entry5.get_value_as_int())
+        settings.set_int('recently-used-max', self.sb_recent_max.get_value_as_int())
 
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.comboboxx, self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.sel4, self.entry5 ]
+        fields = [ self.cbx_shortcut, self.btn_shortcut, self.cbx_theme, self.ckb_width, self.ent_width, self.cbx_units_width, self.cbx_monitor, self.cbx_location, self.cbx_separator, self.sb_recent_max ]
         for f in fields:
             self.selection_changed( f )
 
     def shortcut_selector_changed( self, field ):
         use_custom = ( field.get_active_text() == 'Custom: ' )
         if not use_custom:
-            self.buttonx.set_label(field.get_active_text())
-            self.selection_changed(self.buttonx)
-        self.buttonx.set_visible( use_custom )
+            self.btn_shortcut.set_label(field.get_active_text())
+            self.selection_changed(self.btn_shortcut)
+        self.btn_shortcut.set_visible( use_custom )
         self.selection_changed(field)
 
     def selection_changed( self, field ):
@@ -287,7 +288,7 @@ class HUDSettingsWindow(Gtk.Window):
 
         changed = False
         if field.get_name() == 'combobox-keyboard-shortcut' and field.get_active_text() == 'Custom: ':
-            field = self.buttonx
+            field = self.btn_shortcut
         field_type =  type(field).__name__
         if field_type == 'Button':
             print( field.get_name() )
@@ -308,10 +309,10 @@ class HUDSettingsWindow(Gtk.Window):
             style_context.remove_class('changed')
             field.set_has_tooltip(False)
 
-        if field == self.entry1:
-            self.indicate_invalid( self.entry1, invalid=( not validate_custom_width(self.entry1.get_text() + self.units1.get_active_text()) ) )
-        if field == self.sel0 and self.sel0.get_active_text():
-            self.indicate_invalid( self.sel0, invalid=( self.sel0.get_active_text().endswith(' (Invalid)' ) ) )
+        if field == self.ent_width:
+            self.indicate_invalid( self.ent_width, invalid=( not validate_custom_width(self.ent_width.get_text() + self.cbx_units_width.get_active_text()) ) )
+        if field == self.cbx_theme and self.cbx_theme.get_active_text():
+            self.indicate_invalid( self.cbx_theme, invalid=( self.cbx_theme.get_active_text().endswith(' (Invalid)' ) ) )
 
     def indicate_invalid( self, field, invalid=True ):
         style_context = field.get_style_context()
@@ -323,15 +324,15 @@ class HUDSettingsWindow(Gtk.Window):
             field.set_has_tooltip(False)
 
     def connect_to_signals(self):
-        self.sel0.connect("changed", self.selection_changed)
-        self.checkbutton1.connect("toggled", self.selection_changed )
-        self.entry1.connect("changed", self.selection_changed)
-        self.units1.connect("changed", self.selection_changed)
-        self.sel2.connect("changed", self.selection_changed)
-        self.sel3.connect("changed", self.selection_changed)
-        self.sel4.connect("changed", self.selection_changed)
-        self.entry5.connect("value-changed", self.selection_changed)
-        self.comboboxx.connect("changed", self.shortcut_selector_changed)
+        self.cbx_theme.connect("changed", self.selection_changed)
+        self.ckb_width.connect("toggled", self.selection_changed )
+        self.ent_width.connect("changed", self.selection_changed)
+        self.cbx_units_width.connect("changed", self.selection_changed)
+        self.cbx_monitor.connect("changed", self.selection_changed)
+        self.cbx_location.connect("changed", self.selection_changed)
+        self.cbx_separator.connect("changed", self.selection_changed)
+        self.sb_recent_max.connect("value-changed", self.selection_changed)
+        self.cbx_shortcut.connect("changed", self.shortcut_selector_changed)
 
     def reload_view_on_change(self, schema, key):
         logging.info( "Reloading view in response to key change." )
@@ -346,51 +347,51 @@ class HUDSettingsWindow(Gtk.Window):
         if not key or key == 'shortcut':
             shortcut = get_string( 'org.mate.hud', None, 'shortcut' )
             if shortcut in self.single_modifier_keys:
-                self.comboboxx.set_active(self.single_modifier_keys.index(shortcut))
-                self.buttonx.set_visible(False)
+                self.cbx_shortcut.set_active(self.single_modifier_keys.index(shortcut))
+                self.btn_shortcut.set_visible(False)
             else:
-                self.comboboxx.set_active(self.single_modifier_keys.index('Custom: '))
-                self.buttonx.set_visible(True)
-            self.buttonx.set_label( get_string( 'org.mate.hud', None, 'shortcut' ) )
+                self.cbx_shortcut.set_active(self.single_modifier_keys.index('Custom: '))
+                self.btn_shortcut.set_visible(True)
+            self.btn_shortcut.set_label( get_string( 'org.mate.hud', None, 'shortcut' ) )
 
         if not key or key == 'rofi-theme':
             themes = get_theme_list(sort=True)
-            self.sel0.remove_all()
+            self.cbx_theme.remove_all()
             for u in range(len(themes)):
-                self.sel0.insert(u, str(u), themes[u])
+                self.cbx_theme.insert(u, str(u), themes[u])
             try:
-                self.sel0.set_active(themes.index(get_rofi_theme()))
-                self.indicate_invalid( self.sel0, invalid=False )
+                self.cbx_theme.set_active(themes.index(get_rofi_theme()))
+                self.indicate_invalid( self.cbx_theme, invalid=False )
             except:
-                self.sel0.insert(len(themes), str(len(themes)), get_rofi_theme() + ' (Invalid)')
-                self.sel0.set_active(len(themes))
-                self.indicate_invalid( self.sel0 )
+                self.cbx_theme.insert(len(themes), str(len(themes)), get_rofi_theme() + ' (Invalid)')
+                self.cbx_theme.set_active(len(themes))
+                self.indicate_invalid( self.cbx_theme )
 
         if not key or key == 'custom-width':
             use_cw, w, u = get_custom_width()
-            self.checkbutton1.set_active(use_cw)
-            self.entry1.set_visible(use_cw)
-            self.units1.set_visible(use_cw)
+            self.ckb_width.set_active(use_cw)
+            self.ent_width.set_visible(use_cw)
+            self.cbx_units_width.set_visible(use_cw)
             if use_cw:
                 try:
-                    self.entry1.set_text(w)
-                    self.entry1.set_editable(use_cw)
-                    self.units1.set_active(self.valid_units.index(u))
+                    self.ent_width.set_text(w)
+                    self.ent_width.set_editable(use_cw)
+                    self.cbx_units_width.set_active(self.valid_units.index(u))
                 except:
-                    self.entry1.set_text('')
-                    self.units1.set_active(self.valid_units.index('px'))
+                    self.ent_width.set_text('')
+                    self.cbx_units_width.set_active(self.valid_units.index('px'))
 
         if not key or key == 'hud-monitor':
-            self.sel2.set_active(HUD_DEFAULTS.VALID_MONITORS.index(get_monitor()))
+            self.cbx_monitor.set_active(HUD_DEFAULTS.VALID_MONITORS.index(get_monitor()))
 
         if not key or key == 'location':
-            self.sel3.set_active(HUD_DEFAULTS.VALID_LOCATIONS.index(get_location()))
+            self.cbx_location.set_active(HUD_DEFAULTS.VALID_LOCATIONS.index(get_location()))
 
         if not key or key == 'menu-separator':
-            self.sel4.set_active(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS.index(get_menu_separator_pair()))
+            self.cbx_separator.set_active(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS.index(get_menu_separator_pair()))
 
         if not key or key == 'recently-used-max':
-            self.entry5.set_value(get_recently_used_max())
+            self.sb_recent_max.set_value(get_recently_used_max())
 
 if __name__ == "__main__":
     setproctitle.setproctitle('hud-settings')
