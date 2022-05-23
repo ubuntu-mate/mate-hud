@@ -48,12 +48,8 @@ class HUDCurrentSettings():
         return get_number( 'org.mate.hud', None, 'recently-used-max' )
 
     @property
-    def use_custom_separator(self):
-        return get_menu_separator()[0]
-
-    @property
-    def custom_separator(self):
-        return get_menu_separator()[1]
+    def menu_separator(self):
+        return get_string( 'org.mate.hud', None, 'menu-separator' )
 
 class HUDSettingsWindow(Gtk.Window):
     widget_name_to_property_map = { 'button-keyboard-shortcut': 'shortcut',
@@ -63,8 +59,7 @@ class HUDSettingsWindow(Gtk.Window):
                                     'combobox-custom-width-units': 'custom_width_units',
                                     'combobox-hud-monitor': 'hud_monitor',
                                     'combobox-location': 'location',
-                                    'checkbutton-use-custom-separator': 'use_custom_separator',
-                                    'entry-custom-separator': 'custom_separator',
+                                    'combobox-menu-separator': 'menu_separator',
                                     'entry-recently-used-max': 'recently_used_max' }
     valid_units = [ 'px', 'em', 'ch', '%' ]
 
@@ -132,15 +127,12 @@ class HUDSettingsWindow(Gtk.Window):
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        label4 = Gtk.Label(label="Custom Menu Separator: ", xalign=0, tooltip_text="Character to use to denote the menu heirarchy in the HUD.\nMust be one character or the unicode code point (in hex) of a single character\nor the word 'default': » for LTR languages and « for RTL languages")
+        label4 = Gtk.Label(label="Menu Separator: ", xalign=0, tooltip_text="Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)")
         hbox.pack_start(label4, True, True, 0)
-        hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.checkbutton4 = Gtk.CheckButton(name='checkbutton-use-custom-separator')
-        self.checkbutton4.connect("toggled", self.use_custom_menu_separator_toggled)
-        hbox_.pack_start(self.checkbutton4, True, True, 0)
-        self.entry4 = Gtk.Entry(xalign=1, max_length=8, width_chars=9, name='entry-custom-separator')
-        hbox_.pack_start(self.entry4, True, True, 0)
-        hbox.pack_start(hbox_, False, True, 0)
+        self.sel4 = Gtk.ComboBoxText(name='combobox-menu-separator')
+        for u in range(len(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS)):
+            self.sel4.insert(u, str(u), HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[u])
+        hbox.pack_start(self.sel4, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
@@ -212,8 +204,8 @@ class HUDSettingsWindow(Gtk.Window):
 
     def use_custom_menu_separator_toggled(self, button):
         use_cms = button.get_active()
-        self.entry4.set_editable(use_cms)
-        self.entry4.set_visible(use_cms)
+        self.sel4.set_editable(use_cms)
+        self.sel4.set_visible(use_cms)
 
     def use_custom_theme_toggled(self, button):
         use_cw = button.get_active()
@@ -253,20 +245,7 @@ class HUDSettingsWindow(Gtk.Window):
         else:
             settings.set_string('rofi-theme', self.sel0.get_active_text())
 
-        sep = self.entry4.get_text()
-        default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
-        if not self.checkbutton4.get_active():
-            sep = 'default'
-        elif len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', sep)) == 1:
-            try:
-                sep =  chr(int(sep, 16))
-            except:
-                sep = default_sep
-        elif len(sep) == 1:
-            pass
-        else:
-            sep = default
-        settings.set_string('menu-separator', sep)
+        settings.set_string('menu-separator', self.sel4.get_active_text())
 
         if self.checkbutton1.get_active():
             if validate_custom_width(self.entry1.get_text()):
@@ -281,7 +260,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.checkbutton4, self.entry4, self.entry5 ]
+        fields = [ self.buttonx, self.sel0, self.checkbutton1, self.entry1, self.units1, self.sel2, self.sel3, self.sel4, self.entry5 ]
         for f in fields:
             self.selection_changed( f )
 
@@ -313,8 +292,6 @@ class HUDSettingsWindow(Gtk.Window):
             self.indicate_invalid( self.entry1, invalid=( not validate_custom_width(self.entry1.get_text() + self.units1.get_active_text()) ) )
         if field == self.sel0 and self.sel0.get_active_text():
             self.indicate_invalid( self.sel0, invalid=( self.sel0.get_active_text().endswith(' (Invalid)' ) ) )
-        if field == self.entry4:
-            self.indicate_invalid( self.entry4, invalid=( not validate_menu_separator(self.entry4.get_text()) ) )
 
     def indicate_invalid( self, field, invalid=True ):
         style_context = field.get_style_context()
@@ -332,8 +309,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.units1.connect("changed", self.selection_changed)
         self.sel2.connect("changed", self.selection_changed)
         self.sel3.connect("changed", self.selection_changed)
-        self.checkbutton4.connect("toggled", self.selection_changed )
-        self.entry4.connect("changed", self.selection_changed)
+        self.sel4.connect("changed", self.selection_changed)
         self.entry5.connect("value-changed", self.selection_changed)
 
     def reload_view_on_change(self, schema, key):
@@ -383,9 +359,7 @@ class HUDSettingsWindow(Gtk.Window):
             self.sel3.set_active(HUD_DEFAULTS.VALID_LOCATIONS.index(get_location()))
 
         if not key or key == 'menu-separator':
-            use_cms, sep = get_menu_separator()
-            self.checkbutton4.set_active(use_cms)
-            self.entry4.set_text(sep)
+            self.sel4.set_active(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS.index(get_menu_separator_pair()))
 
         if not key or key == 'recently-used-max':
             self.entry5.set_value(get_recently_used_max())

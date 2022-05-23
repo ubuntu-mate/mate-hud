@@ -16,6 +16,15 @@
     <value value="8" nick="west"/>
     <value value="9" nick="center"/>
   </enum>
+  <enum id="org.mate.hud.separator-pairs">
+    <value value="0" nick="◂   ▸"/>
+    <value value="1" nick="←   ➔"/>
+    <value value="2" nick="←   ➜"/>
+    <value value="3" nick="⮜   ⮞"/>
+    <value value="4" nick="❮   ❯"/>
+    <value value="5" nick="«   »"/>
+    <value value="6" nick="‹   ›"/>
+  </enum>
   <schema id="org.mate.hud" path="/org/mate/hud/">
     <key type="b" name="enabled">
       <default>true</default>
@@ -72,19 +81,11 @@
         * monitor to rofi means whatever it is attached to (window or monitor)
       </description>
     </key>
-    <key type="s" name="menu-separator">
-      <default>"default"</default>
-      <summary>A character to separate the parts of the menu heirarchy in the HUD</summary>
+    <key name="menu-separator" enum="org.mate.hud.separator-pairs">
+      <default>"◂   ▸"</default>
+      <summary>Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)</summary>
       <description>
-        A character to separate the parts of the menu heirarchy in the HUD.
-
-        Can be entered as a single character or the Unicode code point in hexadecimal notation (leading 0x optional)
-
-        or 'default' which will give » for LTR languages and « for RTL languages
-
-        Valid examples: '>', '-', '0x25b8', '25B8', '▸', 'default'
-
-        Invalid: '--' (too many characters), '25B8B8' (outside of valid range)
+        Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)
       </description>
     </key>
     <key type="s" name="recently-used">

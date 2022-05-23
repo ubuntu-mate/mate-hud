@@ -47,7 +47,7 @@ class Store(object):
             cls.instance.monitor = HUD_DEFAULTS.MONITOR
             cls.instance.location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
             cls.instance.custom_width = '0'
-            cls.instance.menu_separator = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
+            cls.instance.menu_separator = get_menu_separator()
             cls.instance.recently_used = None
             try:
                 cls.instance.recently_used = json.loads( get_string( 'org.mate.hud', None, 'recently-used' ) )
@@ -1005,24 +1005,7 @@ if __name__ == "__main__":
         store.custom_width = '0'
 
     def change_menu_separator(schema, key):
-        default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
-        menu_separator = settings.get_string('menu-separator')
-        if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
-            try:
-                store.menu_separator = chr(int(menu_separator, 16))
-                logging.info( "Menu separator updated to '%s'" % store.menu_separator )
-            except:
-                logging.info( "Invalid menu separator '%s'specified. Using default '%s'" % ( menu_separator, default ) )
-                store.menu_separator = default
-        elif len(menu_separator) == 1:
-            store.menu_separator = menu_separator
-            logging.info( "Menu separator updated to '%s'" % store.menu_separator )
-        elif menu_separator == 'default':
-            store.menu_separator = default
-            logging.info( "Menu separator updated to '%s'" % store.menu_separator )
-        else:
-            logging.info( "Invalid menu separator '%s'specified. Using default '%s'" % ( menu_separator, default ) )
-            store.menu_separator = default
+        store.menu_separator = get_menu_separator()
 
     def change_recently_used_max(schema, key):
         store.recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')

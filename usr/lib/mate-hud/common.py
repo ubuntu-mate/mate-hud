@@ -22,14 +22,6 @@ class Defaults(object):
         return 'mate-hud-rounded'
 
     @constant
-    def SEPARATOR():
-        return u'\u00BB'
-
-    @constant
-    def SEPARATOR_RTL():
-        return u'\u00AB'
-
-    @constant
     def LOCATION():
         return 'north west'
 
@@ -48,6 +40,22 @@ class Defaults(object):
     @constant
     def VALID_MONITORS():
         return [ 'window', 'monitor' ]
+
+    @constant
+    def VALID_SEPARATOR_PAIRS():
+        # unicode pair: left arrow (for RTL languages),  3 spaces (to make it easier to see), right arrow
+        # If you add more valid pairs here, be sure to add them in the schema org.mate.hud.separator-pairs enum too.
+        return [ u'\u25C2' + ' '*3 + u'\u25B8',  # "◂   ▸"
+                 u'\u2190' + ' '*3 + u'\u2794',  # "←   ➔" # doesn't seem to be a left arrow to match the right, so close enough
+                 u'\u2190' + ' '*3 + u'\u279C',  # "←   ➜" # doesn't seem to be a left arrow to match the right, so close enough
+                 u'\u2B9C' + ' '*3 + u'\u2B9E',  # "⮜   ⮞"
+                 u'\u276E' + ' '*3 + u'\u276F',  # "❮   ❯"
+                 u'\u00AB' + ' '*3 + u'\u00BB',  # "«   »"
+                 u'\u2039' + ' '*3 + u'\u203A' ]  # "‹   ›"
+
+    @constant
+    def SEPARATOR():
+        return HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[0]
 
 HUD_DEFAULTS = Defaults()
 
@@ -129,20 +137,18 @@ def use_custom_width():
         pass
     return False
 
+def get_menu_separator_pair():
+    menu_separator = HUD_DEFAULTS.SEPARATOR
+    try: menu_separator = get_string('org.mate.hud', None, 'menu-separator')
+    except: pass
+    return menu_separator
+
 def get_menu_separator():
-    default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
-    menu_separator = get_string('org.mate.hud', None, 'menu-separator')
-    if menu_separator == 'default':
-        return [ False, default ]
-    if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
-        try:
-            return [ True, chr(int(menu_separator, 16)) ]
-        except:
-            return [ True, default ]
-    elif len(menu_separator) == 1:
-        return [ True, menu_separator ]
+    menu_separator = get_menu_separator_pair()
+    if isrtl():
+        return menu_separator[0]
     else:
-        return [ True, default ]
+        return menu_separator[-1]
 
 def monitor_rofi_argument(monitor):
     arguments = { 'window': '-2', 'monitor': '-1' }
@@ -173,11 +179,6 @@ def get_location():
         location = default_location
         logging.error("Invalid location specified, defaulting to %s" % default_location )
     return location
-
-def use_custom_separator():
-    default = HUD_DEFAULTS.SEPARATOR if not isrtl() else HUD_DEFAULTS.SEPARATOR_RTL
-    sep = get_menu_separator()
-    return not ( sep == default or sep == 'default' )
 
 def get_recently_used_max():
     recently_used_max = 0
