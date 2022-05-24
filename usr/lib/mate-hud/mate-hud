@@ -424,9 +424,10 @@ def get_menu(menuKeys):
         else:
             return item
     menuKeys.sort(key=sort_menu)
+    recently_used_decoration = u'\u2015' * 100
     if win_name in store.recently_used.keys():
-        menuKeys.insert(len(menu_recently_used), u'\u2015' * 100)
-        menuKeys.insert(0, 'Recently Used   ' + u'\u2015' * 100)
+        menuKeys.insert(len(menu_recently_used), recently_used_decoration)
+        menuKeys.insert(0, 'Recently Used   ' + recently_used_decoration)
     menu_string = '\n'.join(menuKeys)
 
     # Allow closing the HUD with the same modifier key that opens it
@@ -467,7 +468,7 @@ def get_menu(menuKeys):
     menu_cmd.stdin.close()
 
     # Add the menu result to the list of recently used commands for the application
-    if menu_result:
+    if menu_result and not recently_used_decoration in menu_result:
         result_fmt = menu_result.replace(store.menu_separator, '>').lstrip()
         if win_name not in store.recently_used.keys():
             store.recently_used.update({ win_name: [] })
