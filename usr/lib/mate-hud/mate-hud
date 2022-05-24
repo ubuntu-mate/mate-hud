@@ -415,9 +415,9 @@ def get_menu(menuKeys):
     if win_name in store.recently_used.keys():
         menu_recently_used = store.recently_used.get(win_name)
     def sort_menu(item):
-		# We have to store the items with the separator changed back to some
-		# standard value to make sure it'll match regardless if someone changed
-		# the separator character.
+        # We have to store the items with the separator changed back to some
+        # standard value to make sure it'll match regardless if someone changed
+        # the separator character.
         item_fmt = item.replace(store.menu_separator, '>').lstrip()
         if item_fmt in menu_recently_used:
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
@@ -959,13 +959,14 @@ if __name__ == "__main__":
         keybinder.tap_timeout = tap_timeout;
 
     def change_rofi_theme(schema, key):
-        default_theme = 'mate-hud-rounded'
+        default_theme = HUD_DEFAULTS.THEME
         rofi_theme = settings.get_string("rofi-theme")
 
         themes = get_theme_list()
         if not rofi_theme in themes:
             logging.info( '%s not found as a valid rofi theme, defaulting to %s' % ( rofi_theme, default_theme ) )
-            rofi_theme = default_theme
+            settings.set_string('rofi-theme', default_theme )
+            return
 
         if rofi_theme in store.mate_hud_themes:
             if Gtk.Window().get_scale_factor() > 1 and rofi_theme in store.themes_hidpi_versions.keys():
@@ -995,18 +996,12 @@ if __name__ == "__main__":
             store.margin = get_panel_margin()
 
     def change_custom_width(schema, key):
-        custom_width = settings.get_string('custom-width')
-        custom_width = re.sub(r'\s', '', custom_width)
-        if len(re.findall(r'^[0-9]+(\.[0-9]+)?(px|em|ch|%)?$', custom_width)) == 1:
-            w = re.sub(r'(px|em|ch|%)?$', '', custom_width)
-            try:
-                w = int(w)
-                store.custom_width = custom_width
-                return
-            except:
-                pass
-        logging.error( "Invalid custom width '%s' specified. Resetting to default." % custom_width )
-        store.custom_width = '0'
+        try:
+            store.use_custom_width, store.custom_width, store.custom_width_units = get_custom_width()
+        except:
+            logging.error( "Invalid custom width specified. Resetting to default." )
+            settings.set_string('custom-width', '0')
+            return # since we changed the setting, it will call this function again
 
     def change_menu_separator_pair(schema, key):
         store.menu_separator_pair = get_menu_separator_pair()
@@ -1027,7 +1022,7 @@ if __name__ == "__main__":
             store.recently_used = json.loads(recently_used)
         except:
             logging.info( 'Reset recently used list to empty.' )
-            store.recently_used = { }
+            settings.set_string('recently-used', '{ }')
            
     store = Store()
 

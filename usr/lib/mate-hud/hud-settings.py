@@ -28,7 +28,7 @@ class HUDCurrentSettings():
 
     @property
     def custom_width(self):
-        return get_custom_width()[1]
+        return int(get_custom_width()[1])
 
     @property
     def custom_width_units(self):
@@ -110,8 +110,12 @@ class HUDSettingsWindow(Gtk.Window):
         self.ckb_width = Gtk.CheckButton(name='checkbutton-use-custom-width')
         self.ckb_width.connect("toggled", self.use_custom_width_toggled)
         hbox_.pack_start(self.ckb_width, True, True, 0)
-        self.ent_width = Gtk.Entry(name='entry-custom-width', xalign=1, max_length=4, width_chars=5)
-        hbox_.pack_start(self.ent_width, True, True, 0)
+        self.width_adjustments = [ Gtk.Adjustment(lower=0, upper=7680, step_increment=10, page_increment=100, page_size=0, value=600), # pixels
+                                   Gtk.Adjustment(lower=0, upper=200, step_increment=1, page_increment=5, page_size=0, value=40),      # em
+                                   Gtk.Adjustment(lower=0, upper=200, step_increment=1, page_increment=5, page_size=0, value=40),      # ch
+                                   Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=5, page_size=0, value=40)]      # %
+        self.sb_width = Gtk.SpinButton(name='entry-custom-width') # set the adjustment when we load the value from gsettings
+        hbox_.pack_start(self.sb_width, True, True, 0)
         self.cbx_units_width = Gtk.ComboBoxText(name='combobox-custom-width-units')
         for u in range(len(self.valid_units)):
             self.cbx_units_width.insert(u, str(u), self.valid_units[u])
@@ -203,15 +207,6 @@ class HUDSettingsWindow(Gtk.Window):
         spinbutton.changed {
             color: #000
         }
-        entry.invalid, combobox.invalid button, button.invalid, spinbutton.invalid entry, checkbutton.invalid check {
-            border: solid #d83737;
-            background-color: #d83737;
-            color: #fff;
-            border-width: 2px;
-        }
-        spinbutton.invalid {
-            color: #fff
-        }
         """
         provider.load_from_data(css)
 
@@ -223,8 +218,8 @@ class HUDSettingsWindow(Gtk.Window):
 
     def use_custom_width_toggled(self, button):
         use_cw = button.get_active()
-        self.ent_width.set_editable(use_cw)
-        self.ent_width.set_visible(use_cw)
+        self.sb_width.set_editable(use_cw)
+        self.sb_width.set_visible(use_cw)
         self.cbx_units_width.set_visible(use_cw)
 
     def on_shortcut_clicked(self, widget):
@@ -254,18 +249,12 @@ class HUDSettingsWindow(Gtk.Window):
 
         settings.set_string('location', self.cbx_location.get_active_text())
 
-        if self.cbx_theme.get_active_text().endswith(" (" + _("Invalid") + ")"):
-            settings.set_string('rofi-theme', HUD_DEFAULTS.THEME)
-        else:
-            settings.set_string('rofi-theme', self.cbx_theme.get_active_text())
+        settings.set_string('rofi-theme', self.cbx_theme.get_active_text())
 
         settings.set_string('menu-separator', self.cbx_separator.get_active_text())
 
         if self.ckb_width.get_active():
-            if validate_custom_width(self.ent_width.get_text()):
-                settings.set_string('custom-width', self.ent_width.get_text() + self.cbx_units_width.get_active_text())
-            else:
-                logging.error( _("Invalid custom width specified, not setting new value.") )
+            settings.set_string('custom-width', str(self.sb_width.get_value_as_int()) + self.cbx_units_width.get_active_text())
         else:
             settings.set_string('custom-width', '0')
 
@@ -274,7 +263,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.selection_changed_all()
 
     def selection_changed_all( self ):
-        fields = [ self.cbx_shortcut, self.btn_shortcut, self.cbx_theme, self.ckb_width, self.ent_width, self.cbx_units_width, self.cbx_monitor, self.cbx_location, self.cbx_separator, self.sb_recent_max ]
+        fields = [ self.cbx_shortcut, self.btn_shortcut, self.cbx_theme, self.ckb_width, self.sb_width, self.cbx_units_width, self.cbx_monitor, self.cbx_location, self.cbx_separator, self.sb_recent_max ]
         for f in fields:
             self.selection_changed( f )
 
@@ -303,31 +292,21 @@ class HUDSettingsWindow(Gtk.Window):
             changed = ( field.get_text() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         elif field_type == 'CheckButton' :
             changed = ( field.get_active() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
-        if changed == True:
+        if changed:
             style_context.add_class('changed')
             field.set_tooltip_text(_("Change not applied yet"))
         else:
             style_context.remove_class('changed')
             field.set_has_tooltip(False)
-
-        if field == self.ent_width:
-            self.indicate_invalid( self.ent_width, invalid=( not validate_custom_width(self.ent_width.get_text() + self.cbx_units_width.get_active_text()) ) )
-        if field == self.cbx_theme and self.cbx_theme.get_active_text():
-            self.indicate_invalid( self.cbx_theme, invalid=( self.cbx_theme.get_active_text().endswith(' (' + _('Invalid') + ')' ) ) )
-
-    def indicate_invalid( self, field, invalid=True ):
-        style_context = field.get_style_context()
-        if invalid == True:
-            style_context.add_class('invalid')
-            field.set_tooltip_text(_("Invalid entry"))
-        else:
-            style_context.remove_class('invalid')
-            field.set_has_tooltip(False)
+        
+        if field.get_name() == 'combobox-custom-width-units': # and changed:
+            logging.info( 'Changing width adjustment' )
+            self.sb_width.set_adjustment( self.width_adjustments[ field.get_active() ] )
 
     def connect_to_signals(self):
         self.cbx_theme.connect("changed", self.selection_changed)
         self.ckb_width.connect("toggled", self.selection_changed )
-        self.ent_width.connect("changed", self.selection_changed)
+        self.sb_width.connect("changed", self.selection_changed)
         self.cbx_units_width.connect("changed", self.selection_changed)
         self.cbx_monitor.connect("changed", self.selection_changed)
         self.cbx_location.connect("changed", self.selection_changed)
@@ -362,25 +341,24 @@ class HUDSettingsWindow(Gtk.Window):
                 self.cbx_theme.insert(u, str(u), themes[u])
             try:
                 self.cbx_theme.set_active(themes.index(get_rofi_theme()))
-                self.indicate_invalid( self.cbx_theme, invalid=False )
             except:
-                self.cbx_theme.insert(len(themes), str(len(themes)), get_rofi_theme() + ' (' + _('Invalid') + ')')
-                self.cbx_theme.set_active(len(themes))
-                self.indicate_invalid( self.cbx_theme )
+                Gio.Settings.new('org.mate.hud').set_string('rofi-theme', HUD_DEFAULTS.THEME)
+                self.cbx_theme.set_active(themes.index(HUD_DEFAULTS.THEME))
 
         if not key or key == 'custom-width':
-            use_cw, w, u = get_custom_width()
+            try:
+                use_cw, w, u = get_custom_width()
+            except:
+                Gio.Settings.new('org.mate.hud').set_string('custom-width', '0')
             self.ckb_width.set_active(use_cw)
-            self.ent_width.set_visible(use_cw)
+            self.sb_width.set_visible(use_cw)
             self.cbx_units_width.set_visible(use_cw)
             if use_cw:
-                try:
-                    self.ent_width.set_text(w)
-                    self.ent_width.set_editable(use_cw)
-                    self.cbx_units_width.set_active(self.valid_units.index(u))
-                except:
-                    self.ent_width.set_text('')
-                    self.cbx_units_width.set_active(self.valid_units.index('px'))
+                if u == self.cbx_units_width.get_active_text():
+                    self.sb_width.set_value(int(w))
+                self.sb_width.set_editable(use_cw)
+                self.cbx_units_width.set_active(self.valid_units.index(u))
+                self.sb_width.set_adjustment( self.width_adjustments[self.cbx_units_width.get_active()] )
 
         if not key or key == 'hud-monitor':
             self.cbx_monitor.set_active(HUD_DEFAULTS.VALID_MONITORS.index(get_monitor()))

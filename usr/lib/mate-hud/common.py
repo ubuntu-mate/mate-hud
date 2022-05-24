@@ -100,7 +100,7 @@ def get_rofi_theme():
 
 def validate_custom_width(custom_width):
     custom_width = re.sub(r'\s', '', custom_width)
-    if len(re.findall(r'^[0-9]+(\.[0-9]+)?(px|em|ch|%)?$', custom_width)) == 1:
+    if len(re.findall(r'^[0-9]+(px|em|ch|%)?$', custom_width)) == 1:
         w = re.sub(r'(px|em|ch|%)?$', '', custom_width)
         try:
             w = int(w)
@@ -114,7 +114,7 @@ def get_custom_width():
     if validate_custom_width(custom_width):
         custom_width = re.sub(r'\s', '', custom_width)
         w = re.sub(r'(px|em|ch|%)?$', '', custom_width)
-        u = re.sub(r'^[0-9]+(\.[0-9]+)?', '', custom_width)
+        u = re.sub(r'^[0-9]+', '', custom_width)
         if u == '':
             u = 'px'
         return [ not ( w == '0' and u == 'px' ), w, u ]
