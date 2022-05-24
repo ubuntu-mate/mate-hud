@@ -73,8 +73,7 @@ class HUDSettingsWindow(Gtk.Window):
         self.add_custom_css_classes()
         self.set_border_width(10)
         self.set_resizable(False)
-        # Would be nice to have our own icon to use, but for now...
-        self.set_icon_name("preferences-system")
+        self.set_icon_name("mate-hud")
 
         box_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=50)
         self.add(box_outer)
