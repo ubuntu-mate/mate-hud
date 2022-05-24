@@ -46,7 +46,7 @@ class Store(object):
             cls.instance.themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
             cls.instance.monitor = HUD_DEFAULTS.MONITOR
             cls.instance.location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
-            cls.instance.custom_width = '0'
+            cls.instance.custom_width = HUD_DEFAULTS.CUSTOM_WIDTH
             cls.instance.menu_separator_pair = get_menu_separator_pair()
             cls.instance.menu_separator = get_menu_separator()
             cls.instance.recently_used = None
@@ -423,11 +423,14 @@ def get_menu(menuKeys):
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
         else:
             return item
-    menuKeys.sort(key=sort_menu)
-    recently_used_decoration = u'\u2015' * 100
-    if win_name in store.recently_used.keys():
-        menuKeys.insert(len(menu_recently_used), recently_used_decoration)
-        menuKeys.insert(0, 'Recently Used   ' + recently_used_decoration)
+    if store.recently_used_max != 0: 
+        menuKeys.sort(key=sort_menu)
+        recently_used_decoration = u'\u2015' * 100
+        if win_name in store.recently_used.keys():
+            menuKeys.insert(len(menu_recently_used), recently_used_decoration)
+            menuKeys.insert(0, 'Recently Used   ' + recently_used_decoration)
+    else:
+        menuKeys.sort()
     menu_string = '\n'.join(menuKeys)
 
     # Allow closing the HUD with the same modifier key that opens it
@@ -459,7 +462,7 @@ def get_menu(menuKeys):
     if store.rofi_theme in store.mate_hud_themes:
         update_theme_overrides_if_needed()
         cmd += [ '-theme-str', store.rofi_theme_overrides ]
-    if store.custom_width != '0':
+    if store.custom_width != HUD_DEFAULTS.CUSTOM_WIDTH:
         cmd += [ '-theme-str', ' window { width: ' + store.custom_width + '; } ' ]
 
     menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -468,14 +471,14 @@ def get_menu(menuKeys):
     menu_cmd.stdin.close()
 
     # Add the menu result to the list of recently used commands for the application
-    if menu_result and not recently_used_decoration in menu_result:
+    if store.recently_used_max != 0 and menu_result and not recently_used_decoration in menu_result:
         result_fmt = menu_result.replace(store.menu_separator, '>').lstrip()
         if win_name not in store.recently_used.keys():
             store.recently_used.update({ win_name: [] })
         if result_fmt in store.recently_used.get(win_name):
             store.recently_used.get(win_name).remove(result_fmt) # we're moving it to the front
         store.recently_used.get(win_name).insert(0, result_fmt)
-        if store.recently_used_max > 0:
+        if store.recently_used_max > 0: # 0 is already excluded, negative means unlimited
             store.recently_used[win_name] = store.recently_used.get(win_name)[:store.recently_used_max]
         Gio.Settings.new('org.mate.hud').set_string('recently-used', json.dumps(store.recently_used))
     return menu_result
@@ -1001,7 +1004,7 @@ if __name__ == "__main__":
             store.use_custom_width, store.custom_width, store.custom_width_units = get_custom_width()
         except:
             logging.error( "Invalid custom width specified. Resetting to default." )
-            settings.set_string('custom-width', '0')
+            settings.set_string('custom-width', HUD_DEFAULTS.CUSTOM_WIDTH)
             return # since we changed the setting, it will call this function again
 
     def change_menu_separator_pair(schema, key):
@@ -1016,6 +1019,8 @@ if __name__ == "__main__":
             for key in store.recently_used.keys():
                 store.recently_used[key] = store.recently_used.get(key)[:store.recently_used_max]
             settings.set_string('recently-used', json.dumps(store.recently_used))
+        elif store.recently_used_max == 0:
+            settings.set_string('recently-used', '{}') # 0 means don't save recently used, so clear it out.
 
     def change_recently_used(schema, key):
         recently_used = get_string('org.mate.hud', None, 'recently-used')
@@ -1023,8 +1028,8 @@ if __name__ == "__main__":
             store.recently_used = json.loads(recently_used)
         except:
             logging.info( 'Reset recently used list to empty.' )
-            settings.set_string('recently-used', '{ }')
-           
+            settings.set_string('recently-used', '{}')
+
     store = Store()
 
     enabled = False

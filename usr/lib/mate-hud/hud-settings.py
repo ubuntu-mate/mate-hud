@@ -152,9 +152,9 @@ class HUDSettingsWindow(Gtk.Window):
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
-        lbl_recent_max = Gtk.Label(label=_("Max Recently Used Items: "), xalign=0, tooltip_text=_("Maximum number of recently used items to remember per application"))
+        lbl_recent_max = Gtk.Label(label=_("Max Recently Used Items: "), xalign=0, tooltip_text=_("Maximum number of recently used items to remember per application\n0: Don't save recently used items\n-1: save unlimited recently used items"))
         hbox.pack_start(lbl_recent_max, True, True, 0)
-        adjustment = Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=10, page_size=0, value=0)
+        adjustment = Gtk.Adjustment(lower=-1, upper=100, step_increment=1, page_increment=10, page_size=0, value=0)
         self.sb_recent_max = Gtk.SpinButton(xalign=1, name='entry-recently-used-max', adjustment=adjustment)
         hbox.pack_start(self.sb_recent_max, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
@@ -222,6 +222,15 @@ class HUDSettingsWindow(Gtk.Window):
         self.sb_width.set_visible(use_cw)
         self.cbx_units_width.set_visible(use_cw)
 
+    def recent_max_update_tooltip(self):
+        recent_max = self.sb_recent_max.get_value_as_int()
+        if recent_max == -1:
+            self.sb_recent_max.set_tooltip_text(_('Unlimited'))
+        elif recent_max == 0:
+            self.sb_recent_max.set_tooltip_text(_("Don't save or show recently used menu items"))
+        else:
+            self.sb_recent_max.set_has_tooltip(False)
+
     def on_shortcut_clicked(self, widget):
         keystr = getkey_dialog.ask_for_key(previous_key=get_string('org.mate.hud', None, 'shortcut'), screen=widget.get_screen(), parent=widget.get_toplevel())
         if not keystr:
@@ -256,7 +265,7 @@ class HUDSettingsWindow(Gtk.Window):
         if self.ckb_width.get_active():
             settings.set_string('custom-width', str(self.sb_width.get_value_as_int()) + self.cbx_units_width.get_active_text())
         else:
-            settings.set_string('custom-width', '0')
+            settings.set_string('custom-width', HUD_DEFAULTS.CUSTOM_WIDTH)
 
         settings.set_int('recently-used-max', self.sb_recent_max.get_value_as_int())
 
@@ -298,7 +307,8 @@ class HUDSettingsWindow(Gtk.Window):
         else:
             style_context.remove_class('changed')
             field.set_has_tooltip(False)
-        
+        if field.get_name() == 'entry-recently-used-max':
+            self.recent_max_update_tooltip()
         if field.get_name() == 'combobox-custom-width-units': # and changed:
             logging.info( 'Changing width adjustment' )
             self.sb_width.set_adjustment( self.width_adjustments[ field.get_active() ] )
@@ -349,7 +359,7 @@ class HUDSettingsWindow(Gtk.Window):
             try:
                 use_cw, w, u = get_custom_width()
             except:
-                Gio.Settings.new('org.mate.hud').set_string('custom-width', '0')
+                Gio.Settings.new('org.mate.hud').set_string('custom-width', HUD_DEFAULTS.CUSTOM_WIDTH)
             self.ckb_width.set_active(use_cw)
             self.sb_width.set_visible(use_cw)
             self.cbx_units_width.set_visible(use_cw)
@@ -371,6 +381,7 @@ class HUDSettingsWindow(Gtk.Window):
 
         if not key or key == 'recently-used-max':
             self.sb_recent_max.set_value(get_recently_used_max())
+            self.recent_max_update_tooltip()
 
 if __name__ == "__main__":
     setproctitle.setproctitle('hud-settings')

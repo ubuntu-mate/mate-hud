@@ -46,7 +46,7 @@ class Defaults(object):
 
     @constant
     def VALID_SEPARATOR_PAIRS():
-        # unicode pair: left arrow (for RTL languages),  3 spaces (to make it easier to see), right arrow
+        # unicode pair: left arrow (for RTL languages),  3 spaces (to make it easier to read), right arrow
         # If you add more valid pairs here, be sure to add them in the schema org.mate.hud.separator-pairs enum too.
         return [ u'\u25C2' + ' '*3 + u'\u25B8',  # "◂   ▸"
                  u'\u2190' + ' '*3 + u'\u2794',  # "←   ➔" # doesn't seem to be a left arrow to match the right, so close enough
@@ -59,6 +59,12 @@ class Defaults(object):
     @constant
     def SEPARATOR():
         return HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[0]
+
+    def RECENTLY_USED_MAX():
+        return 10
+
+    def CUSTOM_WIDTH():
+        return '0'
 
 HUD_DEFAULTS = Defaults()
 

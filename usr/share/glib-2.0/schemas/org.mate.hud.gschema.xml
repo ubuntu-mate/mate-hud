@@ -89,7 +89,7 @@
       </description>
     </key>
     <key type="s" name="recently-used">
-      <default>""</default>
+      <default>"{}"</default>
       <summary>JSON dictionary of recently selected menu items per application</summary>
       <description>
         JSON dictionary of recently selected menu items per application
@@ -97,12 +97,14 @@
     </key>
     <key type="i" name="recently-used-max">
       <default>10</default>
-      <range min='0'/>
+      <range min='-1' max='100'/>
       <summary>The maximum number of recently used menu entries to save per application</summary>
       <description>
         The maximum number of recently used menu entries to save per application
 
-        0 is interpreted as unlimited entries.
+        -1 is interpreted as unlimited entries.
+
+        0 is interpreted as don't show/save recently used items
       </description>
     </key>
     <key type="i" name="tap-timeout">
