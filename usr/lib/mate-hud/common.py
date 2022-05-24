@@ -109,17 +109,6 @@ def validate_custom_width(custom_width):
             pass
     return False
 
-def validate_menu_separator( menu_separator ):
-    if menu_separator == 'default' or len(menu_separator) == 1:
-        return True
-    if len(re.findall(r'^(0[xX])?[0-9A-Fa-f]{2,6}$', menu_separator)) == 1:
-        try:
-            chr(int(menu_separator, 16))
-            return True
-        except:
-            pass
-    return False
-
 def get_custom_width():
     custom_width = get_string('org.mate.hud', None, 'custom-width')
     if validate_custom_width(custom_width):
