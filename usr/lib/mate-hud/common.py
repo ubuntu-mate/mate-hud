@@ -146,13 +146,14 @@ def get_menu_separator_pair():
     except: pass
     return menu_separator
 
-def get_menu_separator():
-    menu_separator = get_menu_separator_pair()
+def get_menu_separator(pair=None):
+    if not pair:
+        pair = get_menu_separator_pair()
     #pair stored as 'R   L' R: RTL separator, L: LTR separator (spaces may be variable, currently 3)
     if isrtl():
-        return menu_separator[0]
+        return pair[0]
     else:
-        return menu_separator[-1]
+        return pair[-1]
 
 def monitor_rofi_argument(monitor):
     arguments = { 'window': '-2', 'monitor': '-1' }

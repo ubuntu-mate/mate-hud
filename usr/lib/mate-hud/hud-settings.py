@@ -294,10 +294,8 @@ class HUDSettingsWindow(Gtk.Window):
             field = self.btn_shortcut
         field_type =  type(field).__name__
         if field_type == 'Button':
-            print( field.get_name() )
             changed = ( field.get_label() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         elif field_type == 'SpinButton':
-            print( field.get_name() )
             changed = ( field.get_value_as_int() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )
         elif field_type == 'ComboBoxText' :
             changed = ( field.get_active_text() != getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( field.get_name() ) ) )

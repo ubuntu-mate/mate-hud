@@ -47,6 +47,7 @@ class Store(object):
             cls.instance.monitor = HUD_DEFAULTS.MONITOR
             cls.instance.location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
             cls.instance.custom_width = '0'
+            cls.instance.menu_separator_pair = get_menu_separator_pair()
             cls.instance.menu_separator = get_menu_separator()
             cls.instance.recently_used = None
             cls.instance.recently_used_max = get_number( 'org.mate.hud', None, 'recently-used-max' )
@@ -108,7 +109,7 @@ def format_path(path):
     result = result.replace('_', '')
     store = Store()
     # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
-    store.menu_separator = get_menu_separator()
+    store.menu_separator = get_menu_separator(pair=store.menu_separator_pair)
     return result.replace('>', u'\u0020\u0020' + store.menu_separator + u'\u0020\u0020')
 
 def get_desktop_env():
@@ -417,7 +418,7 @@ def get_menu(menuKeys):
 		# We have to store the items with the separator changed back to some
 		# standard value to make sure it'll match regardless if someone changed
 		# the separator character.
-        item_fmt = item.replace(Store().menu_separator, '>').lstrip()
+        item_fmt = item.replace(store.menu_separator, '>').lstrip()
         if item_fmt in menu_recently_used:
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
         else:
@@ -467,7 +468,7 @@ def get_menu(menuKeys):
 
     # Add the menu result to the list of recently used commands for the application
     if menu_result:
-        result_fmt = menu_result.replace(Store().menu_separator, '>').lstrip()
+        result_fmt = menu_result.replace(store.menu_separator, '>').lstrip()
         if win_name not in store.recently_used.keys():
             store.recently_used.update({ win_name: [] })
         if result_fmt in store.recently_used.get(win_name):
@@ -1007,8 +1008,10 @@ if __name__ == "__main__":
         logging.error( "Invalid custom width '%s' specified. Resetting to default." % custom_width )
         store.custom_width = '0'
 
-    def change_menu_separator(schema, key):
-        store.menu_separator = get_menu_separator()
+    def change_menu_separator_pair(schema, key):
+        store.menu_separator_pair = get_menu_separator_pair()
+        logging.info('Menu separator pair set as %s' % store.menu_separator_pair)
+        store.menu_separator = get_menu_separator(pair=store.menu_separator_pair)
 
     def change_recently_used_max(schema, key):
         store.recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')
@@ -1048,7 +1051,7 @@ if __name__ == "__main__":
         settings.connect("changed::hud-monitor", change_monitor)
         settings.connect("changed::location", change_location)
         settings.connect("changed::custom-width", change_custom_width)
-        settings.connect("changed::menu-separator", change_menu_separator)
+        settings.connect("changed::menu-separator", change_menu_separator_pair)
         settings.connect("changed::recently-used-max", change_recently_used_max)
         settings.connect("changed::recently-used", change_recently_used)
 
@@ -1057,7 +1060,7 @@ if __name__ == "__main__":
         change_monitor(None, None) # This calls change_location too
         store.dpi = get_display_dpi()
         change_custom_width(None, None)
-        change_menu_separator(None, None)
+        change_menu_separator_pair(None, None)
         change_recently_used(None, None)
         change_recently_used_max(None, None)
         try:
