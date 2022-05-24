@@ -30,8 +30,8 @@ includes an implementation of the `com.canonical.AppMenu.Registrar` DBus
 service. Applications exporting their menu via `dbusmenu` need this
 service to run. `mate-hud.py` tries to get the menu of the currently
 focused window, lists possible actions and asks the user which one to
-run. `mate-hud.py`, binds itself to the `<Ctrl><Alt>space` keyboard
-shortcut by default.
+run. `mate-hud.py`, binds itself to the `Alt_L` keyboard
+shortcut by default (can be changed in the settings GUI).
 
 ### Settings
 
@@ -47,7 +47,7 @@ the available themes and make changes with the included settings program.
 
 ### Manual Setup
 
-  * The `vala-panel-appmenu` applet for MATE should be added to a panel.
+  * The `vala-panel-appmenu` applet for MATE or XFCE should be added to a panel.
   * `mate-hud.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
