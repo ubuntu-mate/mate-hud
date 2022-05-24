@@ -43,6 +43,7 @@ data_files = [
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/mate-hud']),
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/common.py']),
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/hud-settings.py']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/i18n.py']),
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/getkey_dialog.py']),
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/getkey_dialog.ui']),
     ('{prefix}/share/applications/'.format(prefix=sys.prefix), ['usr/share/applications/hud-settings.desktop']),

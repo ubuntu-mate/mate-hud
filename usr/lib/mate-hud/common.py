@@ -9,6 +9,9 @@ import re
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, Gtk
 
+import i18n
+_ = i18n.language.gettext
+
 def constant(f):
     def fset(self, value):
         raise TypeError
@@ -92,7 +95,7 @@ def get_rofi_theme():
     try:
         rofi_theme = get_string('org.mate.hud', None, 'rofi-theme')
     except:
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % rofi_theme)
+        logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + rofi_theme)
     return rofi_theme
 
 def validate_custom_width(custom_width):
@@ -126,7 +129,7 @@ def get_custom_width():
         if u == '':
             u = 'px'
         return [ not ( w == '0' and u == 'px' ), w, u ]
-    raise ValueError( "Invalid custom width specified" )
+    raise ValueError( _("Invalid custom width specified") )
 
 def use_custom_width():
     try:
@@ -162,7 +165,7 @@ def get_monitor():
     try:
         monitor = get_string('org.mate.hud', None, 'hud-monitor')
     except:
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % HUD_DEFAULTS.MONITOR)
+        logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + HUD_DEFAULTS.MONITOR)
     if monitor in HUD_DEFAULTS.VALID_MONITORS:
         return monitor
     else:
@@ -174,10 +177,10 @@ def get_location():
     try:
         location = get_string('org.mate.hud', None, 'location')
     except:
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % default_location)
+        logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + default_location)
     if location not in HUD_DEFAULTS.VALID_LOCATIONS:
         location = default_location
-        logging.error("Invalid location specified, defaulting to %s" % default_location )
+        logging.error(_("Invalid location specified, defaulting to ") + default_location )
     return location
 
 def get_recently_used_max():
@@ -185,7 +188,7 @@ def get_recently_used_max():
     try:
         recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')
     except:
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % recently_used_max)
+        logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + recently_used_max)
     return recently_used_max
 
 def isrtl():

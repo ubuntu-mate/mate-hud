@@ -16,6 +16,7 @@ class GetKeyDialogController(object):
         show_clear: Show the “clear” button
         '''
         builder = Gtk.Builder()
+        builder.set_translation_domain('hud-settings')
         filename = inspect.getframeinfo(inspect.currentframe()).filename
         path     = os.path.dirname(os.path.abspath(filename))
         ui_file = path + "/getkey_dialog.ui"
