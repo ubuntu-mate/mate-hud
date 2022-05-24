@@ -106,7 +106,10 @@ def format_path(path):
     result = result.replace('Root > ', '')
     result = result.replace('Label Empty > ', '')
     result = result.replace('_', '')
-    return result.replace('>', u'\u0020\u0020' + Store().menu_separator + u'\u0020\u0020')
+    store = Store()
+    # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
+    store.menu_separator = get_menu_separator()
+    return result.replace('>', u'\u0020\u0020' + store.menu_separator + u'\u0020\u0020')
 
 def get_desktop_env():
     desktop_env = ''
@@ -405,11 +408,15 @@ def get_menu(menuKeys):
     ewmh = EWMH()
     win = ewmh.getActiveWindow()
     win_name = ewmh._getProperty('WM_CLASS', win)
+    # comes back in the format b'name\x00Name\x00' and we just want to keep name (\x00 is Null character)
     win_name = bytes(bytearray(win_name)[0:bytearray(win_name).index(0)]).decode('utf-8')
     menu_recently_used = []
     if win_name in store.recently_used.keys():
         menu_recently_used = store.recently_used.get(win_name)
     def sort_menu(item):
+		# We have to store the items with the separator changed back to some
+		# standard value to make sure it'll match regardless if someone changed
+		# the separator character.
         item_fmt = item.replace(Store().menu_separator, '>').lstrip()
         if item_fmt in menu_recently_used:
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
@@ -464,7 +471,7 @@ def get_menu(menuKeys):
         if win_name not in store.recently_used.keys():
             store.recently_used.update({ win_name: [] })
         if result_fmt in store.recently_used.get(win_name):
-            store.recently_used.get(win_name).remove(result_fmt)
+            store.recently_used.get(win_name).remove(result_fmt) # we're moving it to the front
         store.recently_used.get(win_name).insert(0, result_fmt)
         if store.recently_used_max > 0:
             store.recently_used[win_name] = store.recently_used.get(win_name)[:store.recently_used_max]
