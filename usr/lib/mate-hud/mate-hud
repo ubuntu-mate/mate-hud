@@ -691,6 +691,63 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             except Exception as e:
                 logging.debug('action_path: %s', str(action_path))
 
+class DbusPlotinusMenuItem(object):
+
+    def __init__(self, item):
+        self.path     = list(item['Path'])[1:]
+        self.action   = int(item['Id'])
+        self.accel    = list(item['Accelerators'])
+        self.label    = item['Label']
+        self.text     = format_path('>' + '>'.join(self.path + [self.label]))
+
+class DbusPlotinusMenu(object):
+
+    def __init__(self, session, window_object_path):
+        self.actions     = {}
+        self.session     = session
+        self.win_path    = window_object_path #window.get_utf8_prop('_GTK_WINDOW_OBJECT_PATH')
+        self.interface = self.get_interface()
+
+    def activate(self, selection):
+        self.actions[selection].Execute()
+
+    def get_interface(self):
+        bus_name = 'com.worldwidemann.plotinus'
+        bus_path = '/com/worldwidemann/plotinus'
+
+        try:
+            object = self.session.get_object(bus_name, bus_path)
+            interface = dbus.Interface(object, dbus_interface=bus_name)
+            return interface
+        except dbus.exceptions.DBusException:
+            logging.info('Unable to get plotinus D-Bus interface')
+            return None
+
+    def get_results(self):
+        self.actions = {}
+
+        if self.interface and self.win_path:
+            name, paths = self.interface.GetCommands(self.win_path)
+            commands        = [self.session.get_object(name, path) for path in paths]
+
+            for command in commands:
+                self.collect_entries(command)
+
+    def collect_entries(self, command):
+        interface    = dbus.Interface(command, dbus_interface='org.freedesktop.DBus.Properties')
+        command        = dbus.Interface(command, dbus_interface='com.worldwidemann.plotinus.Command')
+        properties = interface.GetAll('com.worldwidemann.plotinus.Command')
+        menu_item    = DbusPlotinusMenuItem(properties)
+
+        self.actions[menu_item.text] = command
+
+
+def try_plotinus_interface(gtk_win_object_path):
+    x = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
+    x.get_results()
+    menu_result = get_menu(x.actions.keys())
+    x.activate(menu_result)
+
 def hud(widget, keystr, user_data):
     logging.debug("Handling %s", str(user_data))
 
@@ -724,6 +781,7 @@ def hud(widget, keystr, user_data):
     if not registrar_running:
         terminate_appmenu_registrar()
 
+    gtkmenubar_success = False
     if not appmenu_success and gtk_menubar_object_path:
         logging.debug('Appmenu found nothing.')
         # Many apps do not respect menu action groups, such as
@@ -735,9 +793,19 @@ def hud(widget, keystr, user_data):
                                    gtk_menubar_object_path,
                                    gtk_app_object_path,
                                    gtk_unity_object_path]))
-        try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
+        gtkmenubar_success = try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
     else:
-        logging.debug('_GTK_MENUBAR_OBJECT_PATH in None, giving up.')
+        logging.debug('_GTK_MENUBAR_OBJECT_PATH in None. Unable to use the menubar interface.')
+
+    if not gtkmenubar_success and gtk_win_object_path:
+        logging.debug('GTK menubar found nothing; trying plotinus interface.')
+        plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
+        plotinus.get_results()
+        menu_result = get_menu( list(plotinus.actions.keys()) )
+        if menu_result:
+            plotinus.activate(menu_result)
+    else:
+        logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
 
 class GlobalKeyBinding(GObject.GObject, threading.Thread):
     __gsignals__ = {
@@ -1030,6 +1098,31 @@ if __name__ == "__main__":
             logging.info( 'Reset recently used list to empty.' )
             settings.set_string('recently-used', '{}')
 
+    def start_plotinus():
+        # Enable plotinus D-bus service in gsettings
+        try:
+            x = Gio.Settings.list_relocatable_schemas()
+            if not 'com.worldwidemann.plotinus' in x:
+                logging.info('Plotinus schema not installed')
+                return
+            plotinus_settings = Gio.Settings.new_with_path('com.worldwidemann.plotinus', '/com/worldwidemann/plotinus/default/')
+            if 'dbus-enabled' in plotinus_settings.list_keys():
+                plotinus_settings.set_boolean('dbus-enabled', True)
+            else:
+                print( plotinus_settings.list_keys() )
+                logging.info('Unable to enable plotinus D-bus service')
+                return
+        except:
+            logging.info('Unable to enable plotinus D-bus service')
+            return
+        # Start the D-bus service executable
+        if not process_running('plotinus'):
+            try:
+                subprocess.Popen(['plotinus'])
+                logging.info('Launching plotinus D-Bus service')
+            except:
+                logging.info('Unable to launch plotinus D-Bus executable')
+
     store = Store()
 
     enabled = False
@@ -1064,6 +1157,8 @@ if __name__ == "__main__":
         change_menu_separator_pair(None, None)
         change_recently_used(None, None)
         change_recently_used_max(None, None)
+        start_plotinus()
+
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:
