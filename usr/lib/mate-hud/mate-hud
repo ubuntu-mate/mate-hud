@@ -51,6 +51,11 @@ class Store(object):
             cls.instance.menu_separator = get_menu_separator()
             cls.instance.recently_used = None
             cls.instance.recently_used_max = get_number( 'org.mate.hud', None, 'recently-used-max' )
+            cls.instance.plotinus_enabled = False
+            cls.instance.plotinus_schema = None
+            cls.instance.plotinus_path = None
+            cls.instance.plotinus_bus_name = None
+            cls.instance.plotinus_bus_path = None
         return cls.instance
 
 class EWMH:
@@ -691,6 +696,8 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             except Exception as e:
                 logging.debug('action_path: %s', str(action_path))
 
+# DbusPlotinusMenuItem and DbusPlotinusMenu classes taken and slightly
+# modified from gnome-hud https://github.com/hardpixel/gnome-hud
 class DbusPlotinusMenuItem(object):
 
     def __init__(self, item):
@@ -705,15 +712,15 @@ class DbusPlotinusMenu(object):
     def __init__(self, session, window_object_path):
         self.actions     = {}
         self.session     = session
-        self.win_path    = window_object_path #window.get_utf8_prop('_GTK_WINDOW_OBJECT_PATH')
+        self.win_path    = window_object_path
         self.interface = self.get_interface()
 
     def activate(self, selection):
         self.actions[selection].Execute()
 
     def get_interface(self):
-        bus_name = 'com.worldwidemann.plotinus'
-        bus_path = '/com/worldwidemann/plotinus'
+        bus_name = Store().plotinus_bus_name
+        bus_path = Store().plotinus_bus_path
 
         try:
             object = self.session.get_object(bus_name, bus_path)
@@ -735,8 +742,8 @@ class DbusPlotinusMenu(object):
 
     def collect_entries(self, command):
         interface    = dbus.Interface(command, dbus_interface='org.freedesktop.DBus.Properties')
-        command        = dbus.Interface(command, dbus_interface='com.worldwidemann.plotinus.Command')
-        properties = interface.GetAll('com.worldwidemann.plotinus.Command')
+        command        = dbus.Interface(command, dbus_interface=(Store().plotinus_bus_name + '.Command'))
+        properties = interface.GetAll(Store().plotinus_bus_name + '.Command')
         menu_item    = DbusPlotinusMenuItem(properties)
 
         self.actions[menu_item.text] = command
@@ -797,15 +804,18 @@ def hud(widget, keystr, user_data):
     else:
         logging.debug('_GTK_MENUBAR_OBJECT_PATH in None. Unable to use the menubar interface.')
 
-    if not gtkmenubar_success and gtk_win_object_path:
-        logging.debug('GTK menubar found nothing; trying plotinus interface.')
-        plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
-        plotinus.get_results()
-        menu_result = get_menu( list(plotinus.actions.keys()) )
-        if menu_result:
-            plotinus.activate(menu_result)
+    if Store().plotinus_enabled:
+        if not gtkmenubar_success and gtk_win_object_path:
+            logging.debug('GTK menubar found nothing; trying plotinus interface.')
+            plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
+            plotinus.get_results()
+            menu_result = get_menu( list(plotinus.actions.keys()) )
+            if menu_result:
+                plotinus.activate(menu_result)
+        else:
+            logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
     else:
-        logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
+        logging.debug('Plotinus is not enabled')
 
 class GlobalKeyBinding(GObject.GObject, threading.Thread):
     __gsignals__ = {
@@ -1102,14 +1112,23 @@ if __name__ == "__main__":
         # Enable plotinus D-bus service in gsettings
         try:
             x = Gio.Settings.list_relocatable_schemas()
-            if not 'com.worldwidemann.plotinus' in x:
+            if 'com.worldwidemann.plotinus' in x:
+                store.plotinus_schema = 'com.worldwidemann.plotinus'
+                store.plotinus_path = '/com/worldwidemann/plotinus/'
+                store.plotinus_bus_name = 'com.worldwidemann.plotinus'
+                store.plotinus_bus_path = '/com/worldwidemann/plotinus'
+            elif 'org.unityx.plotinus' in x:
+                store.plotinus_schema = 'org.unityx.plotinus'
+                store.plotinus_path = '/org/unityx/plotinus/'
+                store.plotinus_bus_name = 'org.unityx.plotinus'
+                store.plotinus_bus_path = '/com/worldwidemann/plotinus'
+            else:
                 logging.info('Plotinus schema not installed')
                 return
-            plotinus_settings = Gio.Settings.new_with_path('com.worldwidemann.plotinus', '/com/worldwidemann/plotinus/default/')
+            plotinus_settings = Gio.Settings.new_with_path(store.plotinus_schema, store.plotinus_path + 'default/')
             if 'dbus-enabled' in plotinus_settings.list_keys():
                 plotinus_settings.set_boolean('dbus-enabled', True)
             else:
-                print( plotinus_settings.list_keys() )
                 logging.info('Unable to enable plotinus D-bus service')
                 return
         except:
@@ -1122,6 +1141,10 @@ if __name__ == "__main__":
                 logging.info('Launching plotinus D-Bus service')
             except:
                 logging.info('Unable to launch plotinus D-Bus executable')
+                return
+        else:
+            logging.info('plotinus D-Bus service is already running')
+        store.plotinus_enabled = True
 
     store = Store()
 
