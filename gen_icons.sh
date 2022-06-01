@@ -9,7 +9,7 @@ fi
 
 for d in 16 22 24 32 48 64 128 256 512 ; do
 	install -dm755 "${dir}"/usr/share/icons/hicolor/${d}x${d}/apps
-	inkscape -w ${d} -h ${d} "${dir}"/usr/share/pixmaps/mate-hud.svg -o output.png \
+	inkscape -w ${d} -h ${d} "${dir}"/usr/share/pixmaps/mate-hud.svg \
 	                -o "${dir}"/usr/share/icons/hicolor/${d}x${d}/apps/mate-hud.png
 done
 install -Dm644 "${dir}"/usr/share/pixmaps/mate-hud.svg \
