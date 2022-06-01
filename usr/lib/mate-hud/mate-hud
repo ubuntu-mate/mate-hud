@@ -56,6 +56,7 @@ class Store(object):
             cls.instance.plotinus_path = None
             cls.instance.plotinus_bus_name = None
             cls.instance.plotinus_bus_path = None
+            cls.instance.panels = []
         return cls.instance
 
 class EWMH:
@@ -224,6 +225,22 @@ def terminate_appmenu_registrar():
     if process_running('appmenu-registrar') and not appmenu_loaded:
         kill_process('appmenu-registrar')
 
+def get_running_panels():
+    panels = []
+    for p in [ 'xfce4-panel', 'mate-panel', 'plank', 'dockx' ]:
+        if process_running(p):
+            panels.append(p)
+    return panels
+
+def thr_panel_updater():
+    while True:
+        time.sleep(60)
+        panels = get_running_panels()
+        if panels != store.panels:
+            logging.info("Running panels have changed, updating margin")
+            update_panel_margin()
+            store.panels = panels
+
 def get_panel_margin():
     logging.info( 'Getting panel margin' )
     margin = [ -1, -1 ]
@@ -320,6 +337,9 @@ def get_panel_margin():
         margin[0] = 0
     logging.info( 'New margin:' + str(margin) )
     return margin
+
+def update_panel_margin():
+    store.margin = get_panel_margin()
 
 def rgba_to_hex(color):
    """
@@ -428,7 +448,7 @@ def get_menu(menuKeys):
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
         else:
             return item
-    if store.recently_used_max != 0: 
+    if store.recently_used_max != 0:
         menuKeys.sort(key=sort_menu)
         recently_used_decoration = u'\u2015' * 100
         if win_name in store.recently_used.keys():
@@ -1076,9 +1096,12 @@ if __name__ == "__main__":
         else:
             logging.info( "Updated location to: %s" % location )
         store.location = location
+        change_panel_margin(None, None)
+
+    def change_panel_margin(schema, key):
         if store.location == 'center':
             logging.info( 'Updating panel margin to 0 for HUD in the center' )
-            store.panel_margin = [ 0, 0 ]
+            store.margin = [ 0, 0 ]
         elif store.monitor == 'window':
             store.margin = [ -1, -1 ]
         else:
@@ -1109,7 +1132,7 @@ if __name__ == "__main__":
 
     def change_recently_used(schema, key):
         recently_used = get_string('org.mate.hud', None, 'recently-used')
-        try: 
+        try:
             store.recently_used = json.loads(recently_used)
         except:
             logging.info( 'Reset recently used list to empty.' )
@@ -1155,6 +1178,62 @@ if __name__ == "__main__":
             logging.info('plotinus D-Bus service is already running')
         store.plotinus_enabled = True
 
+    def xfce_panel_change_handler(channel, prop, value):
+        watched_props = [ 'autohide-behavior', 'mode', 'position', 'size', 'panels' ]
+        prop = prop.split('/')[-1]
+        if channel == 'xfce4-panel' and prop.split('/')[-1] in watched_props:
+            # If we got a new panel or removed one, update our listeners
+            if prop in 'panels':
+                setup_panel_change_handlers()
+            panel_change_handler(None, None)
+
+    def panel_new_or_removed_handler(schema, key):
+        setup_panel_change_handlers()
+        panel_change_handler(None, None)
+
+    def panel_change_handler(schema, key):
+        update_panel_margin()
+
+    def setup_panel_change_handlers():
+        #xfce4-panel
+        bus = dbus.SessionBus()
+        try:
+            object  = bus.get_object("org.xfce.Xfconf","/org/xfce/Xfconf")
+            # Listens to every change on xfconf, so we'll have to filter out what we care about
+            object.connect_to_signal("PropertyChanged", xfce_panel_change_handler, dbus_interface="org.xfce.Xfconf")
+        except dbus.DBusException:
+            pass
+
+        ss = Gio.SettingsSchemaSource.get_default()
+        #mate-panel
+        if ss.lookup('org.mate.panel', True):
+            s = Gio.Settings.new('org.mate.panel')
+            s.connect("changed::toplevel-id-list", panel_change_handler)
+            panels = get_list("org.mate.panel", None, 'toplevel-id-list')
+            for p in panels:
+                s = Gio.Settings.new_with_path( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/' )
+                s.connect("changed::size", panel_change_handler)
+                s.connect("changed::orientation", panel_change_handler)
+
+        #plank
+        if ss.lookup('org.launchpad.plank', True):
+            s = Gio.Settings.new('net.launchpad.plank')
+            s.connect("changed::enabled-docks", panel_change_handler)
+            docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
+            for dock in docks:
+                s = Gio.Settings.new_with_path('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/')
+                s.connect("changed::position", panel_change_handler)
+                s.connect("changed::icon-size", panel_change_handler)
+                s.connect("changed::theme", panel_change_handler)
+                s.connect("changed::hide-mode", panel_change_handler)
+
+        #dockx
+        if ss.lookup('org.dockbarx.dockx', True):
+            s = Gio.Settings.new('org.dockbarx.dockx')
+            s.connect("changed::position", panel_change_handler)
+            s.connect("changed::behavior", panel_change_handler)
+            s.connect("changed::size", panel_change_handler)
+
     store = Store()
 
     enabled = False
@@ -1180,6 +1259,7 @@ if __name__ == "__main__":
         settings.connect("changed::menu-separator", change_menu_separator_pair)
         settings.connect("changed::recently-used-max", change_recently_used_max)
         settings.connect("changed::recently-used", change_recently_used)
+        setup_panel_change_handlers()
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
@@ -1190,6 +1270,10 @@ if __name__ == "__main__":
         change_recently_used(None, None)
         change_recently_used_max(None, None)
         start_plotinus()
+
+        # watches what panels are running
+        store.panels = get_running_panels()
+        panel_updater_thread = threading.Thread(target=thr_panel_updater, daemon=True).start()
 
         try:
             GLib.MainLoop().run()
