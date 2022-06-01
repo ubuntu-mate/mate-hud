@@ -590,7 +590,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to connect with com.gtk.Menus.')
-        return
+        return False
 
     # Here's the deal: The idea is to reduce the number of calls to the proxy and keep it as low as possible
     # because the proxy is a potential bottleneck
@@ -672,6 +672,8 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
     gtk_menu_menus_iface.End(usedLayers)
 
     menuKeys = sorted(gtk_menubar_action_dict.keys())
+    if len(menuKeys) == 0:
+        return False
     menu_result = get_menu(menuKeys)
 
     # --- Use menu result
@@ -695,6 +697,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                 action_iface.Activate(action, target, not_use_platform_data)
             except Exception as e:
                 logging.debug('action_path: %s', str(action_path))
+    return True
 
 # DbusPlotinusMenuItem and DbusPlotinusMenu classes taken and slightly
 # modified from gnome-hud https://github.com/hardpixel/gnome-hud
@@ -787,9 +790,10 @@ def hud(widget, keystr, user_data):
     appmenu_success = try_appmenu_interface(int(window_id, 16))
     if not registrar_running:
         terminate_appmenu_registrar()
-
+    if appmenu_success:
+        return
     gtkmenubar_success = False
-    if not appmenu_success and gtk_menubar_object_path:
+    if gtk_menubar_object_path:
         logging.debug('Appmenu found nothing.')
         # Many apps do not respect menu action groups, such as
         # LibreOffice and gnome-mpv, so we have to include all action
@@ -803,15 +807,18 @@ def hud(widget, keystr, user_data):
         gtkmenubar_success = try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
     else:
         logging.debug('_GTK_MENUBAR_OBJECT_PATH in None. Unable to use the menubar interface.')
-
+    if gtkmenubar_success:
+        return
     if Store().plotinus_enabled:
-        if not gtkmenubar_success and gtk_win_object_path:
+        if gtk_win_object_path:
             logging.debug('GTK menubar found nothing; trying plotinus interface.')
             plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
             plotinus.get_results()
             menu_result = get_menu( list(plotinus.actions.keys()) )
             if menu_result:
                 plotinus.activate(menu_result)
+            else:
+                logging.debug('Plotinus found nothing.')
         else:
             logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
     else:
@@ -1110,29 +1117,31 @@ if __name__ == "__main__":
 
     def start_plotinus():
         # Enable plotinus D-bus service in gsettings
-        try:
-            x = Gio.Settings.list_relocatable_schemas()
-            if 'com.worldwidemann.plotinus' in x:
-                store.plotinus_schema = 'com.worldwidemann.plotinus'
-                store.plotinus_path = '/com/worldwidemann/plotinus/'
-                store.plotinus_bus_name = 'com.worldwidemann.plotinus'
-                store.plotinus_bus_path = '/com/worldwidemann/plotinus'
-            elif 'org.unityx.plotinus' in x:
+        ss = Gio.SettingsSchemaSource.get_default()
+        schema = ss.lookup('com.worldwidemann.plotinus', True)
+        if schema:
+            store.plotinus_schema = 'com.worldwidemann.plotinus'
+            store.plotinus_path = '/com/worldwidemann/plotinus/'
+            store.plotinus_bus_name = 'com.worldwidemann.plotinus'
+            store.plotinus_bus_path = '/com/worldwidemann/plotinus'
+        else:
+            schema = ss.lookup('org.unityx.plotinus', True)
+            if schema:
                 store.plotinus_schema = 'org.unityx.plotinus'
                 store.plotinus_path = '/org/unityx/plotinus/'
                 store.plotinus_bus_name = 'org.unityx.plotinus'
                 store.plotinus_bus_path = '/com/worldwidemann/plotinus'
-            else:
-                logging.info('Plotinus schema not installed')
-                return
-            plotinus_settings = Gio.Settings.new_with_path(store.plotinus_schema, store.plotinus_path + 'default/')
-            if 'dbus-enabled' in plotinus_settings.list_keys():
+        if schema:
+            # The last tagged release of plotinus 0.2.0 doesn't include the dbus service
+            # so we need to make sure this key exists that we're using a compatible version
+            if schema.has_key('dbus-enabled'):
+                plotinus_settings = Gio.Settings.new_with_path(store.plotinus_schema, store.plotinus_path + 'default/')
                 plotinus_settings.set_boolean('dbus-enabled', True)
             else:
                 logging.info('Unable to enable plotinus D-bus service')
                 return
-        except:
-            logging.info('Unable to enable plotinus D-bus service')
+        else:
+            logging.info('Plotinus schema not installed')
             return
         # Start the D-bus service executable
         if not process_running('plotinus'):
