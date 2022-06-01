@@ -75,7 +75,7 @@ export UBUNTU_MENUPROXY=1
   * `rofi`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
-  * `gir1.2-xfconf-0` Optional to read information about xfce4-panel from xfconf
+  * `plotinus` (optional - additional menu backend for some GTK3 programs without a traditional menu)
 
 A reference package for Debian/Ubuntu is available from:
 

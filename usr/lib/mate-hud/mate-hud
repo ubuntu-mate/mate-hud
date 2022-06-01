@@ -20,13 +20,6 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Gio, GLib, Gtk, Gdk, GObject
 from Xlib import display, protocol, X, Xatom, error
 
-try:
-    gi.require_version("Xfconf", "0")
-    from gi.repository import Xfconf
-    Xfconf.init()
-except:
-    logging.debug('Xfconf gi repository not available')
-
 from common import *
 
 class Store(object):
@@ -248,33 +241,41 @@ def get_panel_margin():
     if process_running('xfce4-panel'):
         pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
         orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
+        bus = dbus.SessionBus()
         try:
-            xfc_panel = Xfconf.Channel.new("xfce4-panel")
-            panels = xfc_panel.get_arrayv("/panels")
+            object = bus.get_object("org.xfce.Xfconf", "/org/xfce/Xfconf")
+            interface = dbus.Interface(object, dbus_interface="org.xfce.Xfconf")
+            panels = list(interface.GetProperty( 'xfce4-panel', '/panels' ))
             for panel in panels:
-                _pos = xfc_panel.get_string("/panels/panel-" + str(panel) + "/position", "p=0;x=0;y=0") #.split(';=')
-                pos = re.split(r'[;=]', _pos ) #pos.split(';\=')
+                _pos = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/position")  #.split(';=')
+                pos = re.split(r'[;=]', _pos )
                 # [ 'p', p, 'x', x, 'y', y ]
                 edge = int( pos[1] )
-                mode = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/mode", 0 )
+
+                mode = 0 # Default panel mode, key doesn't always exist if default
+                if interface.PropertyExists('xfce4-panel', "/panels/panel-" + str(panel) + "/mode"):
+                    mode = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/mode")
                 is_panel = False
-                ah = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/autohide-behavior", 0)
+
+                ah = 0 # Default autohide value, key doesn't always exist if default
+                if interface.PropertyExists('xfce4-panel', "/panels/panel-" + str(panel) + "/autohide-behavior"):
+                    ah = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/autohide-behavior")
                 if ah == 0:
                     is_panel = True
                 if is_panel and mode in orientation.get('vertical') and \
                    ( ( edge in pos_nm.get('left') and 'west' in location ) or \
                    ( edge in pos_nm.get('right') and 'east' in location ) ):
-                    x = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                    x = int(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/size"))
                     if x > margin[0]:
                         margin[0] = x
                 if is_panel and mode in orientation.get('horizontal') and \
                    ( ( edge in pos_nm.get('top') and 'north' in location ) or \
                    ( edge in pos_nm.get('bottom') and 'south' in location ) ):
-                    y = xfc_panel.get_uint("/panels/panel-" + str(panel) + "/size", 0 )
+                    y = int(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/size"))
                     if y > margin[1]:
                         margin[1] = y
-        except:
-            debug.logging('Problem accessing xfconf')
+        except dbus.exceptions.DBusException:
+            logging.info('Failed to get xfce4-panel information over dbus.')
     if process_running('mate-panel'):
         panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
         for p in panels:
