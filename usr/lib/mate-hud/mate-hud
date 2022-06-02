@@ -1208,65 +1208,79 @@ if __name__ == "__main__":
             panel_change_handler(None, None)
 
     def panel_new_or_removed_handler(schema, key):
-        setup_panel_change_handlers()
+        panel_listeners = setup_panel_change_handlers()
         panel_change_handler(None, None)
 
     def panel_change_handler(schema, key):
-        logging.debug('Called panel_change_handler. schema: ' + schema + ', key: ' + key )
+        if schema and key:
+            logging.debug('Called panel_change_handler. schema: ' + \
+                          schema.get_property('schema-id') + \
+                          ', path: ' + schema.get_property('path') + \
+                          ', key: ' + key )
+        else:
+            logging.debug('Called panel_change_handler manually.')
         update_panel_margin()
 
     def setup_panel_change_handlers():
         #xfce4-panel
         bus = dbus.SessionBus()
         try:
-            object  = bus.get_object("org.xfce.Xfconf","/org/xfce/Xfconf")
+            object = bus.get_object("org.xfce.Xfconf","/org/xfce/Xfconf")
             # Listens to every change on xfconf, so we'll have to filter out what we care about
             object.connect_to_signal("PropertyChanged", xfce_panel_change_handler, dbus_interface="org.xfce.Xfconf")
         except dbus.DBusException:
-            pass
+            logging.debug( 'Unable to set D-Bus listener for xfce panel changes.' )
 
-        # TODO: None of this seems to be working...
         ss = Gio.SettingsSchemaSource.get_default()
+        settings_objects = []
         #mate-panel
         if ss.lookup('org.mate.panel', True):
-            s = Gio.Settings.new('org.mate.panel')
-            s.connect("changed::toplevel-id-list", panel_new_or_removed_handler)
+            settings_objects.append(Gio.Settings.new('org.mate.panel'))
+            settings_objects[-1].connect("changed::toplevel-id-list", panel_new_or_removed_handler)
             panels = get_list("org.mate.panel", None, 'toplevel-id-list')
             for p in panels:
-                s = Gio.Settings.new_with_path( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/' )
-                s.connect("changed::size", panel_change_handler)
-                s.connect("changed::orientation", panel_change_handler)
+                settings_objects.append(Gio.Settings.new_with_path( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/' ))
+                settings_objects[-1].connect("changed::size", panel_change_handler)
+                settings_objects[-1].connect("changed::orientation", panel_change_handler)
+        else:
+            logging.debug( 'mate-panel schema not found' )
 
         #budgie-panel
         if ss.lookup('com.solus-project.budgie-panel', True):
-            s = Gio.Settings.new('com.solus-project.budgie-panel')
-            s.connect("changed::panels", panel_new_or_removed_handler)
+            settings_objects.append(Gio.Settings.new('com.solus-project.budgie-panel'))
+            settings_objects[-1].connect("changed::panels", panel_new_or_removed_handler)
             panels = get_list('com.solus-project.budgie-panel', None, 'panels')
             for p in panels:
-                s = Gio.Settings.new_with_path( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/' )
-                s.connect("changed::size", panel_change_handler)
-                s.connect("changed::location", panel_change_handler)
+                settings_objects.append(Gio.Settings.new_with_path( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/' ))
+                settings_objects[-1].connect("changed::size", panel_change_handler)
+                settings_objects[-1].connect("changed::location", panel_change_handler)
         else:
-            print( 'budgie panel schema not found' )
+            logging.debug( 'budgie panel schema not found' )
 
         #plank
-        if ss.lookup('org.launchpad.plank', True):
-            s = Gio.Settings.new('net.launchpad.plank')
-            s.connect("changed::enabled-docks", panel_new_or_removed_handler)
+        if ss.lookup('net.launchpad.plank', True):
+            settings_objects.append(Gio.Settings.new('net.launchpad.plank'))
+            settings_objects[-1].connect("changed::enabled-docks", panel_new_or_removed_handler)
             docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
             for dock in docks:
-                s = Gio.Settings.new_with_path('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/')
-                s.connect("changed::position", panel_change_handler)
-                s.connect("changed::icon-size", panel_change_handler)
-                s.connect("changed::theme", panel_change_handler)
-                s.connect("changed::hide-mode", panel_change_handler)
+                settings_objects.append(Gio.Settings.new_with_path('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/'))
+                settings_objects[-1].connect("changed::position", panel_change_handler)
+                settings_objects[-1].connect("changed::icon-size", panel_change_handler)
+                settings_objects[-1].connect("changed::theme", panel_change_handler)
+                settings_objects[-1].connect("changed::hide-mode", panel_change_handler)
+        else:
+            logging.debug( 'plank schema not found' )
 
         #dockx
         if ss.lookup('org.dockbarx.dockx', True):
-            s = Gio.Settings.new('org.dockbarx.dockx')
-            s.connect("changed::position", panel_change_handler)
-            s.connect("changed::behavior", panel_change_handler)
-            s.connect("changed::size", panel_change_handler)
+            settings_objects.append(Gio.Settings.new('org.dockbarx.dockx'))
+            settings_objects[-1].connect("changed::position", panel_change_handler)
+            settings_objects[-1].connect("changed::behavior", panel_change_handler)
+            settings_objects[-1].connect("changed::size", panel_change_handler)
+        else:
+            logging.debug( 'dockx schema not found' )
+
+        return settings_objects
 
     store = Store()
 
@@ -1293,7 +1307,10 @@ if __name__ == "__main__":
         settings.connect("changed::menu-separator", change_menu_separator_pair)
         settings.connect("changed::recently-used-max", change_recently_used_max)
         settings.connect("changed::recently-used", change_recently_used)
-        setup_panel_change_handlers()
+
+        # If we don't preserve the gsettings objects in this context,
+        # the listeners don't work
+        panel_listeners = setup_panel_change_handlers()
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
