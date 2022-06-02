@@ -111,19 +111,6 @@ def format_path(path):
     store.menu_separator = get_menu_separator(pair=store.menu_separator_pair)
     return result.replace('>', u'\u0020\u0020' + store.menu_separator + u'\u0020\u0020')
 
-def get_desktop_env():
-    desktop_env = ''
-    try:
-        desktop_env = os.environ['XDG_CURRENT_DESKTOP']
-    except:
-        pass
-    if not desktop_env:
-        try:
-            desktop_env = os.environ['XDG_SESSION_DESKTOP']
-        except:
-            pass
-    return desktop_env
-
 def process_running(name):
     uid = os.getuid()
     for process in psutil.process_iter():
