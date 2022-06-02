@@ -168,8 +168,8 @@ def terminate_appmenu_registrar():
     #  - Use Dbus Quit method.
     #  - Add checks for other Desktop Environments.
     appmenu_loaded = False
-    if 'MATE' in get_desktop_env():
-        appmenu_loaded =  process_running('appmenu-mate')
+    if process_running('mate-panel'):
+        appmenu_loaded =  process_running('appmenu-mate') # I don't think that's right
     if not appmenu_loaded and process_running('xfce4-panel'):
         try:
             xfc_panel = Xfconf.Channel.new("xfce4-panel")
@@ -210,17 +210,23 @@ def terminate_appmenu_registrar():
                     break
             except:
                 pass
-    if not appmenu_loaded and 'Budgie:GNOME' in get_desktop_env():
-        # Haven't figured out where to look yet because my Budgie session is messed up
-        # so assume it's loaded so we don't kill it in error
-        appmenu_loaded = True
+    if not appmenu_loaded and process_running('budgie-panel'):
+        panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
+        applets = []
+        for p in panels:
+            applets.append( get_list('com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'applets') )
+        for a in applets:
+            name = get_string('com.solus-project.budgie-panel.applet', '/com/solus-project/budgie-panel/applets/{' + p + '}/', 'name')
+            if name == 'Global Menu':
+                appmenu_loaded = True
+                break
 
     if process_running('appmenu-registrar') and not appmenu_loaded:
         kill_process('appmenu-registrar')
 
 def get_running_panels():
     panels = []
-    for p in [ 'xfce4-panel', 'mate-panel', 'plank', 'dockx' ]:
+    for p in [ 'xfce4-panel', 'mate-panel', 'budgie-panel', 'plank', 'dockx' ]:
         if process_running(p):
             panels.append(p)
     return panels
@@ -281,6 +287,19 @@ def get_panel_margin():
         for p in panels:
             size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
             orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
+            if ( ( orientation == 'left' and 'west' in location ) or \
+               ( orientation == 'right' and 'east' in location ) ) and \
+               size > margin[0]:
+                margin[0] = size
+            if ( ( orientation == 'top' and 'north' in location ) or \
+               ( orientation == 'bottom' and 'south' in location ) ) and \
+               size > margin[1]:
+                margin[1] = size
+    if process_running('budgie-panel'):
+        panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
+        for p in panels:
+            size = get_number( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'size' )
+            orientation = get_string( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'location' )
             if ( ( orientation == 'left' and 'west' in location ) or \
                ( orientation == 'right' and 'east' in location ) ) and \
                size > margin[0]:
@@ -1193,6 +1212,7 @@ if __name__ == "__main__":
         panel_change_handler(None, None)
 
     def panel_change_handler(schema, key):
+        logging.debug('Called panel_change_handler. schema: ' + schema + ', key: ' + key )
         update_panel_margin()
 
     def setup_panel_change_handlers():
@@ -1205,21 +1225,34 @@ if __name__ == "__main__":
         except dbus.DBusException:
             pass
 
+        # TODO: None of this seems to be working...
         ss = Gio.SettingsSchemaSource.get_default()
         #mate-panel
         if ss.lookup('org.mate.panel', True):
             s = Gio.Settings.new('org.mate.panel')
-            s.connect("changed::toplevel-id-list", panel_change_handler)
+            s.connect("changed::toplevel-id-list", panel_new_or_removed_handler)
             panels = get_list("org.mate.panel", None, 'toplevel-id-list')
             for p in panels:
                 s = Gio.Settings.new_with_path( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/' )
                 s.connect("changed::size", panel_change_handler)
                 s.connect("changed::orientation", panel_change_handler)
 
+        #budgie-panel
+        if ss.lookup('com.solus-project.budgie-panel', True):
+            s = Gio.Settings.new('com.solus-project.budgie-panel')
+            s.connect("changed::panels", panel_new_or_removed_handler)
+            panels = get_list('com.solus-project.budgie-panel', None, 'panels')
+            for p in panels:
+                s = Gio.Settings.new_with_path( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/' )
+                s.connect("changed::size", panel_change_handler)
+                s.connect("changed::location", panel_change_handler)
+        else:
+            print( 'budgie panel schema not found' )
+
         #plank
         if ss.lookup('org.launchpad.plank', True):
             s = Gio.Settings.new('net.launchpad.plank')
-            s.connect("changed::enabled-docks", panel_change_handler)
+            s.connect("changed::enabled-docks", panel_new_or_removed_handler)
             docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
             for dock in docks:
                 s = Gio.Settings.new_with_path('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/')
