@@ -166,23 +166,24 @@ def kill_process(name):
 def terminate_appmenu_registrar():
     # TODO:
     #  - Use Dbus Quit method.
-    #  - Add checks for other Desktop Environments.
     appmenu_loaded = False
     if process_running('mate-panel'):
         appmenu_loaded =  process_running('appmenu-mate') # I don't think that's right
     if not appmenu_loaded and process_running('xfce4-panel'):
+        bus = dbus.SessionBus()
         try:
-            xfc_panel = Xfconf.Channel.new("xfce4-panel")
-            panels = xfc_panel.get_arrayv("/panels")
+            object = bus.get_object("org.xfce.Xfconf", "/org/xfce/Xfconf")
+            interface = dbus.Interface(object, dbus_interface="org.xfce.Xfconf")
+            panels = list(interface.GetProperty( 'xfce4-panel', '/panels' ))
             plugin_ids = []
             for panel in panels:
-                plugin_ids += xfc_panel.get_arrayv("/panels/panel-" + str(panel) + "/plugin-ids")
+                plugin_ids += list(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/plugin-ids"))
             for plugid in plugin_ids:
-                if ( xfc_panel.get_string("/plugins/plugin-" + str(plugid), "") == 'appmenu' ):
+                if ( str(interface.GetProperty('xfce4-panel', "/plugins/plugin-" + str(plugid))) == 'appmenu' ):
                     appmenu_loaded = True
                     break
-        except:
-            logging.debug('running XFCE panel, but xfconf gi repository not available')
+        except dbus.exceptions.DBusException:
+            logging.info('Failed to get xfce4-panel information over dbus.')
     cmdline = process_get_cmdline( 'vala-panel' )
     if not appmenu_loaded and cmdline:
         profile = 'default'
