@@ -168,7 +168,11 @@ def terminate_appmenu_registrar():
     #  - Use Dbus Quit method.
     appmenu_loaded = False
     if process_running('mate-panel'):
-        appmenu_loaded =  process_running('appmenu-mate') # I don't think that's right
+        applets = get_list( 'org.mate.panel', '/org/mate/panel/general/', 'object-id-list')
+        for a in applets:
+            if get_string( 'org.mate.panel.object', '/org/mate/panel/objects/' + a + '/', 'applet-iid' ) == 'AppmenuAppletFactory::AppmenuApplet':
+                appmenu_loaded = True
+                break
     if not appmenu_loaded and process_running('xfce4-panel'):
         bus = dbus.SessionBus()
         try:
