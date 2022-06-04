@@ -183,26 +183,20 @@ def terminate_appmenu_registrar():
             profile = cmdline[cmdline.index('-p') + 1]
         except:
             pass #if not specified, default profile is used
-
         config = configparser.ConfigParser()
-        confdir = os.getenv('XDG_CONFIG_HOME') or os.path.expanduser('~') + '/.config'
-        xdgconfdirs = os.getenv('XDG_CONFIG_DIRS').split(':')
-        if not confdir in xdgconfdirs:
-            xdgconfdirs.insert( 0, confdir )
-        for d in xdgconfdirs:
-            if os.path.isfile( d + '/vala-panel/' + profile ):
-                config.read( d + '/vala-panel/' + profile )
-                break
-        # List of the plugins in the loaded config (each item will be single-quoted
-        plugins = config.get('core-version-1', 'units').strip("][").split(', ')
+        confdir = GLib.get_user_config_dir()
+        if os.path.isfile( confdir + '/vala-panel/' + profile ):
+            config.read( confdir + '/vala-panel/' + profile )
+            # List of the plugins in the loaded config (each item will be single-quoted
+            plugins = config.get('core-version-1', 'units').strip("][").split(', ')
 
-        for p in plugins:
-            try:
-                if config[p[1:-1]]['plugin-type'] == "'org.valapanel.appmenu'":
-                    appmenu_loaded = True
-                    break
-            except:
-                pass
+            for p in plugins:
+                try:
+                    if config[p[1:-1]]['plugin-type'] == "'org.valapanel.appmenu'":
+                        appmenu_loaded = True
+                        break
+                except:
+                    pass
     if not appmenu_loaded and process_running('budgie-panel'):
         panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
         applets = []
@@ -370,32 +364,31 @@ def get_panel_margin():
             confdir = GLib.get_user_config_dir()
             if os.path.isfile( confdir + '/vala-panel/' + profile ):
                 config.read( confdir + '/vala-panel/' + profile )
-
-            # List of the 'units' in the loaded config (toplevels, applets, other objects?)
-            # (each item will be single-quoted). We only care about the toplevels (panels) now
-            units = []
-            try:
-                units = config.get('core-version-1', 'units').strip("][").split(', ')
-            except:
-                pass
-            for u in units:
+                # List of the 'units' in the loaded config (toplevels, applets, other objects?)
+                # (each item will be single-quoted). We only care about the toplevels (panels) now
+                units = []
                 try:
-                    if config[u[1:-1]]['object-type'] == "'toplevel'":
-                        size = int(config[u[1:-1]]['height'])
-                        # comes back as 'north-left', 'west-down', etc
-                        position = config[u[1:-1]]['panel-gravity'].strip("'").split('-')[0]
-                        # was auto-hide in one place and autohide in another?
-                        #ah = config[u[1:-1]]['auto-hide']
-                        if size > margin[0] and \
-                           ( ( position == 'west' and 'west' in location ) or \
-                           ( position == 'east' and 'east' in location ) ):
-                            margin[0] = size
-                        if size > margin[1] and \
-                           ( ( position == 'north' and 'north' in location ) or \
-                           ( position == 'south' and 'south' in location ) ):
-                            margin[1] = size
+                    units = config.get('core-version-1', 'units').strip("][").split(', ')
                 except:
                     pass
+                for u in units:
+                    try:
+                        if config[u[1:-1]]['object-type'] == "'toplevel'":
+                            size = int(config[u[1:-1]]['height'])
+                            # comes back as 'north-left', 'west-down', etc
+                            position = config[u[1:-1]]['panel-gravity'].strip("'").split('-')[0]
+                            # was auto-hide in one place and autohide in another?
+                            #ah = config[u[1:-1]]['auto-hide']
+                            if size > margin[0] and \
+                               ( ( position == 'west' and 'west' in location ) or \
+                               ( position == 'east' and 'east' in location ) ):
+                                margin[0] = size
+                            if size > margin[1] and \
+                               ( ( position == 'north' and 'north' in location ) or \
+                               ( position == 'south' and 'south' in location ) ):
+                                margin[1] = size
+                    except:
+                        pass
 
     if margin[0] > 0 and margin[1] < 0:
         margin[1] = 0
