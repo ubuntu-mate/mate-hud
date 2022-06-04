@@ -1384,6 +1384,8 @@ if __name__ == "__main__":
             GLib.MainLoop().run()
         except KeyboardInterrupt:
             notifier.stop()
+            terminate_appmenu_registrar()
+            kill_process('plotinus')
             GLib.MainLoop().quit()
     else:
         logging.info("The HUD is disabled via org.mate.hud in gsettings.")
