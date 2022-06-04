@@ -70,6 +70,7 @@ export UBUNTU_MENUPROXY=1
   * `python3`
   * `python3-dbus`
   * `python3-pkgconfig`
+  * `python3-pyinotify`
   * `python3-setproctitle`
   * `python3-xlib`
   * `rofi`

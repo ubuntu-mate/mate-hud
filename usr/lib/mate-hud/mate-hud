@@ -11,6 +11,7 @@ import logging
 import os
 import pkgconfig
 import psutil
+import pyinotify
 import re
 import setproctitle
 import subprocess
@@ -218,7 +219,7 @@ def terminate_appmenu_registrar():
 
 def get_running_panels():
     panels = []
-    for p in [ 'xfce4-panel', 'mate-panel', 'budgie-panel', 'plank', 'dockx' ]:
+    for p in [ 'xfce4-panel', 'mate-panel', 'budgie-panel', 'plank', 'dockx' 'vala-panel' ]:
         if process_running(p):
             panels.append(p)
     return panels
@@ -229,14 +230,15 @@ def thr_panel_updater():
         panels = get_running_panels()
         if panels != store.panels:
             logging.info("Running panels have changed, updating margin")
-            update_panel_margin()
             store.panels = panels
+            update_panel_margin()
 
 def get_panel_margin():
     logging.info( 'Getting panel margin' )
     margin = [ -1, -1 ]
-    location = Store().location
-    if process_running('xfce4-panel'):
+    store = Store()
+    location = store.location
+    if 'xfce4-panel' in store.panels:
         pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
         orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
         bus = dbus.SessionBus()
@@ -274,7 +276,7 @@ def get_panel_margin():
                         margin[1] = y
         except dbus.exceptions.DBusException:
             logging.info('Failed to get xfce4-panel information over dbus.')
-    if process_running('mate-panel'):
+    if 'mate-panel' in store.panels:
         panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
         for p in panels:
             size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
@@ -287,7 +289,7 @@ def get_panel_margin():
                ( orientation == 'bottom' and 'south' in location ) ) and \
                size > margin[1]:
                 margin[1] = size
-    if process_running('budgie-panel'):
+    if 'budgie-panel' in store.panels:
         panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
         for p in panels:
             size = get_number( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'size' )
@@ -300,7 +302,7 @@ def get_panel_margin():
                ( orientation == 'bottom' and 'south' in location ) ) and \
                size > margin[1]:
                 margin[1] = size
-    if process_running('plank'):
+    if 'plank' in store.panels:
         active_docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
         for dock in active_docks:
             position = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'position')
@@ -329,7 +331,7 @@ def get_panel_margin():
                ( ( position == 'top' and 'north' in location ) or \
                ( position == 'bottom' and 'south' in location ) ):
                 margin[1] = size
-    if process_running('dockx'):
+    if 'dockx' in store.panels:
         dockx_is_panel = False
         if get_string( 'org.dockbarx.dockx', None, 'behaviour') == 'standard':
             dockx_is_panel = True
@@ -343,6 +345,46 @@ def get_panel_margin():
            ( ( position == 'top' and 'north' in location ) or \
            ( position == 'bottom' and 'south' in location ) ):
             margin[1] = size
+    if 'vala-panel' in store.panels:
+        cmdline = process_get_cmdline( 'vala-panel' )
+        if cmdline:
+            profile = 'default'
+            try:
+                profile = cmdline[cmdline.index('-p') + 1]
+            except:
+                pass #if not specified, default profile is used
+
+            config = configparser.ConfigParser()
+            confdir = GLib.get_user_config_dir()
+            if os.path.isfile( confdir + '/vala-panel/' + profile ):
+                config.read( confdir + '/vala-panel/' + profile )
+
+            # List of the 'units' in the loaded config (toplevels, applets, other objects?)
+            # (each item will be single-quoted). We only care about the toplevels (panels) now
+            units = []
+            try:
+                units = config.get('core-version-1', 'units').strip("][").split(', ')
+            except:
+                pass
+            for u in units:
+                try:
+                    if config[u[1:-1]]['object-type'] == "'toplevel'":
+                        size = int(config[u[1:-1]]['height'])
+                        # comes back as 'north-left', 'west-down', etc
+                        position = config[u[1:-1]]['panel-gravity'].strip("'").split('-')[0]
+                        # was auto-hide in one place and autohide in another?
+                        #ah = config[u[1:-1]]['auto-hide']
+                        if size > margin[0] and \
+                           ( ( position == 'west' and 'west' in location ) or \
+                           ( position == 'east' and 'east' in location ) ):
+                            margin[0] = size
+                        if size > margin[1] and \
+                           ( ( position == 'north' and 'north' in location ) or \
+                           ( position == 'south' and 'south' in location ) ):
+                            margin[1] = size
+                except:
+                    pass
+
     if margin[0] > 0 and margin[1] < 0:
         margin[1] = 0
     if margin[1] > 0 and margin[0] < 0:
@@ -1213,6 +1255,9 @@ if __name__ == "__main__":
             logging.debug('Called panel_change_handler manually.')
         update_panel_margin()
 
+    def vala_panel_change_handler(e):
+        update_panel_margin()
+
     def setup_panel_change_handlers():
         #xfce4-panel
         bus = dbus.SessionBus()
@@ -1300,9 +1345,18 @@ if __name__ == "__main__":
         settings.connect("changed::recently-used-max", change_recently_used_max)
         settings.connect("changed::recently-used", change_recently_used)
 
+        # watches what panels are running
+        store.panels = get_running_panels()
+        panel_updater_thread = threading.Thread(target=thr_panel_updater, daemon=True).start()
+
         # If we don't preserve the gsettings objects in this context,
         # the listeners don't work
         panel_listeners = setup_panel_change_handlers()
+
+        wm = pyinotify.WatchManager()
+        notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=vala_panel_change_handler)
+        notifier.start()
+        wm.add_watch(GLib.get_user_config_dir() + '/vala-panel/', pyinotify.IN_MODIFY, rec=True, auto_add=True)
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
@@ -1314,13 +1368,10 @@ if __name__ == "__main__":
         change_recently_used_max(None, None)
         start_plotinus()
 
-        # watches what panels are running
-        store.panels = get_running_panels()
-        panel_updater_thread = threading.Thread(target=thr_panel_updater, daemon=True).start()
-
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:
+            notifier.stop()
             GLib.MainLoop().quit()
     else:
         logging.info("The HUD is disabled via org.mate.hud in gsettings.")
