@@ -303,34 +303,46 @@ def get_panel_margin():
                size > margin[1]:
                 margin[1] = size
     if 'plank' in store.panels:
-        active_docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
-        for dock in active_docks:
-            position = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'position')
+        cmdline = process_get_cmdline( 'plank' )
+        dock = 'dock1' # default
+        try:
+            idx = -1
+            if '--name' in cmdline:
+                idx = cmdline.index('--name')
+            elif '-n'  in cmdline:
+                idx = cmdline.index('-n')
+            if idx > 0:
+                dock = cmdline[idx + 1]
+        except:
+            pass
+        #active_docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
+        #for dock in active_docks:
+        position = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'position')
 
-            size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
-            theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
-            config = configparser.ConfigParser()
-            cfg_file = pkgconfig.variables('plank').get('prefix') + 'plank/themes/' + theme + '/dock.theme'
-            if os.path.isfile( cfg_file ):
-                config.read( cfg_file )
-            pad = 0
-            try:
-                pad = float(config['PlankDockTheme']['BottomPadding'])
-            except:
-                pass
-            size = round( size * ( 1 + pad / 10 ) )
+        size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
+        theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
+        config = configparser.ConfigParser()
+        cfg_file = pkgconfig.variables('plank').get('prefix') + 'plank/themes/' + theme + '/dock.theme'
+        if os.path.isfile( cfg_file ):
+            config.read( cfg_file )
+        pad = 0
+        try:
+            pad = float(config['PlankDockTheme']['BottomPadding'])
+        except:
+            pass
+        size = round( size * ( 1 + pad / 10 ) )
 
-            plank_is_panel = False
-            if get_string( 'net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'hide-mode') == 'none':
-                plank_is_panel = True
-            if plank_is_panel and size > margin[0] and \
-               ( ( position == 'left' and 'west' in location ) or \
-               ( position == 'right' and 'east' in location ) ):
-                margin[0] = size
-            if plank_is_panel and size > margin[1] and \
-               ( ( position == 'top' and 'north' in location ) or \
-               ( position == 'bottom' and 'south' in location ) ):
-                margin[1] = size
+        plank_is_panel = False
+        if get_string( 'net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'hide-mode') == 'none':
+            plank_is_panel = True
+        if plank_is_panel and size > margin[0] and \
+           ( ( position == 'left' and 'west' in location ) or \
+           ( position == 'right' and 'east' in location ) ):
+            margin[0] = size
+        if plank_is_panel and size > margin[1] and \
+           ( ( position == 'top' and 'north' in location ) or \
+           ( position == 'bottom' and 'south' in location ) ):
+            margin[1] = size
     if 'dockx' in store.panels:
         dockx_is_panel = False
         if get_string( 'org.dockbarx.dockx', None, 'behaviour') == 'standard':
