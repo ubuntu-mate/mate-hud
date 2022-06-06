@@ -547,7 +547,7 @@ def get_menu(menuKeys):
         update_theme_overrides_if_needed()
         cmd += [ '-theme-str', store.rofi_theme_overrides ]
     if store.custom_width != HUD_DEFAULTS.CUSTOM_WIDTH:
-        cmd += [ '-theme-str', ' window { width: ' + store.custom_width + '; } ' ]
+        cmd += [ '-theme-str', ' window { width: ' + store.custom_width + store.custom_width_units + '; } ' ]
 
     menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     menu_cmd.stdin.write(menu_string.encode('utf-8'))
@@ -1173,6 +1173,10 @@ if __name__ == "__main__":
             logging.error( "Invalid custom width specified. Resetting to default." )
             settings.set_string('custom-width', HUD_DEFAULTS.CUSTOM_WIDTH)
             return # since we changed the setting, it will call this function again
+        if store.use_custom_width:
+            logging.info('Using custom width ' + store.custom_width + store.custom_width_units)
+        else:
+            logging.info('Using width specified by theme.')
 
     def change_menu_separator_pair(schema, key):
         store.menu_separator_pair = get_menu_separator_pair()
