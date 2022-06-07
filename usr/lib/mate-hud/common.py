@@ -60,9 +60,19 @@ class Defaults(object):
     def SEPARATOR():
         return HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[0]
 
+    @constant
     def RECENTLY_USED_MAX():
         return 10
 
+    @constant
+    def RECENTLY_USED_UNLIMITED():
+		return -1
+
+    @constant
+	def RECENTLY_USED_NONE():
+		return 0
+
+	@constant
     def CUSTOM_WIDTH():
         return '0'
 

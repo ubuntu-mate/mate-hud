@@ -58,7 +58,7 @@ class HUDCurrentSettings():
 
 class HUDSettingsWindow(Gtk.Window):
     # Add 'widget-name': 'HUDCurrentSettings property name' when adding a new option
-    widget_name_to_property_map = {
+    widget_property_map = {
         'shortcut': 'shortcut',
         'custom-shortcut': 'shortcut',
         'theme': 'rofi_theme',
@@ -92,7 +92,7 @@ class HUDSettingsWindow(Gtk.Window):
 
     # I guess if there are ever widgets that don't correespond to a property, we would
     # have to write this out, but for now this works fine
-    widget_names = list( widget_name_to_property_map.keys() )
+    widget_names = list( widget_property_map.keys() )
 
     # Add new gsettings options here if we provide fields to change them
     # A changed listener will be set up with a callback to reload_view_on_change
@@ -289,9 +289,9 @@ class HUDSettingsWindow(Gtk.Window):
     def recent_max_update_tooltip(self):
         w = self.get_widget_by_name('recently-used')
         recent_max = w.get_value_as_int()
-        if recent_max == -1:
+        if recent_max == HUD_DEFAULTS.RECENTLY_USED_UNLIMITED:
             w.set_tooltip_text(_('Unlimited'))
-        elif recent_max == 0:
+        elif recent_max == HUD_DEFAULTS.RECENTLY_USED_NONE:
             w.set_tooltip_text(_("Don't save or show recently used menu items"))
         else:
             w.set_has_tooltip(False)
@@ -358,7 +358,7 @@ class HUDSettingsWindow(Gtk.Window):
         if widget.get_name() == 'shortcut' and widget.get_active_text() == _('Custom') + ': ':
             widget = self.get_widget_by_name( 'custom-shortcut' )
         widget_type =  type(widget).__name__
-        current_value = getattr( HUDCurrentSettings(), self.widget_name_to_property_map.get( widget.get_name() ) )
+        current_value = getattr( HUDCurrentSettings(), self.widget_property_map.get( widget.get_name() ) )
         displayed_value = current_value # assume not changed, til we get the value
         if   widget_type == 'Button':       displayed_value = widget.get_label()
         elif widget_type == 'SpinButton':   displayed_value = widget.get_value_as_int()

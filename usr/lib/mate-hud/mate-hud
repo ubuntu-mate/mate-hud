@@ -507,7 +507,7 @@ def get_menu(menuKeys):
             return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
         else:
             return item
-    if store.recently_used_max != 0:
+    if store.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE:
         menuKeys.sort(key=sort_menu)
         recently_used_decoration = u'\u2015' * 100
         if win_name in store.recently_used.keys():
@@ -555,14 +555,14 @@ def get_menu(menuKeys):
     menu_cmd.stdin.close()
 
     # Add the menu result to the list of recently used commands for the application
-    if store.recently_used_max != 0 and menu_result and not recently_used_decoration in menu_result:
+    if store.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE and menu_result and not recently_used_decoration in menu_result:
         result_fmt = menu_result.replace(store.menu_separator, '>').lstrip()
         if win_name not in store.recently_used.keys():
             store.recently_used.update({ win_name: [] })
         if result_fmt in store.recently_used.get(win_name):
             store.recently_used.get(win_name).remove(result_fmt) # we're moving it to the front
         store.recently_used.get(win_name).insert(0, result_fmt)
-        if store.recently_used_max > 0: # 0 is already excluded, negative means unlimited
+        if store.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_UNLIMITED:
             store.recently_used[win_name] = store.recently_used.get(win_name)[:store.recently_used_max]
         Gio.Settings.new('org.mate.hud').set_string('recently-used', json.dumps(store.recently_used))
     return menu_result
