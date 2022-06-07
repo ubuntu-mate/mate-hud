@@ -157,12 +157,13 @@ class HUDSettingsWindow(Gtk.Window):
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         lbl_prompt = Gtk.Label(label=_("HUD Prompt: "), xalign=0,
-                              tooltip_text=_("HUD prompt. Default is blank for 'HUD' localized if possible."))
+                              tooltip_text=_("HUD prompt. Default is 'HUD' localized if possible."))
         hbox.pack_start(lbl_prompt, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         ckb_prompt = Gtk.CheckButton(name='use-prompt')
         hbox_.pack_start(ckb_prompt, True, True, 0)
         entry_prompt = Gtk.Entry(name='prompt')
+        entry_prompt.set_placeholder_text(HUD_DEFAULTS.PROMPT)
         hbox_.pack_start(entry_prompt, False, True, 0)
         hbox.pack_start(hbox_, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
