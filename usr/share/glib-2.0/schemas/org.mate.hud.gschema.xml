@@ -62,6 +62,14 @@
         Where to position the HUD on the window (or monitor)
       </description>
     </key>
+    <key name="prompt" type="s">
+      <default>''</default>
+      <summary>The prompt to use for the HUD</summary>
+      <description>
+		Prompt to use for the HUD
+		Default: '' -> displayed as HUD localized if available
+      </description>
+    </key>
     <key type="s" name="custom-width">
       <default>'0'</default>
       <summary>A custom width for the HUD (or 0 for default)</summary>

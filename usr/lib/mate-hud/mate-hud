@@ -51,6 +51,7 @@ class Store(object):
             cls.instance.plotinus_bus_name = None
             cls.instance.plotinus_bus_path = None
             cls.instance.panels = []
+            cls.instance.prompt = ''
         return cls.instance
 
 class EWMH:
@@ -521,9 +522,10 @@ def get_menu(menuKeys):
     shortcut = get_shortcut()
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
     shortcut = '' if modifiers else ',' + shortcut
+    prompt = store.prompt or HUD_DEFAULTS.PROMPT
 
     cmd = ['rofi', '-dmenu', '-i',
-           '-p', 'HUD',
+           '-p', prompt,
            '-lines', '10',
            '-dpi', str(store.dpi),
            '-separator-style', 'none',
@@ -1201,6 +1203,9 @@ if __name__ == "__main__":
             logging.info( 'Reset recently used list to empty.' )
             settings.set_string('recently-used', '{}')
 
+    def change_prompt(schema, key):
+        store.prompt = get_string( 'org.mate.hud', None, 'prompt' )
+
     def start_plotinus():
         # Enable plotinus D-bus service in gsettings
         ss = Gio.SettingsSchemaSource.get_default()
@@ -1353,6 +1358,7 @@ if __name__ == "__main__":
         settings.connect("changed::menu-separator", change_menu_separator_pair)
         settings.connect("changed::recently-used-max", change_recently_used_max)
         settings.connect("changed::recently-used", change_recently_used)
+        settings.connect("changed::prompt", change_prompt)
 
         # watches what panels are running
         store.panels = get_running_panels()
@@ -1383,6 +1389,7 @@ if __name__ == "__main__":
         change_menu_separator_pair(None, None)
         change_recently_used(None, None)
         change_recently_used_max(None, None)
+        change_prompt(None, None)
         start_plotinus()
 
         try:

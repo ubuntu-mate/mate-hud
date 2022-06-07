@@ -66,15 +66,19 @@ class Defaults(object):
 
     @constant
     def RECENTLY_USED_UNLIMITED():
-		return -1
+        return -1
 
     @constant
-	def RECENTLY_USED_NONE():
-		return 0
+    def RECENTLY_USED_NONE():
+        return 0
 
-	@constant
+    @constant
     def CUSTOM_WIDTH():
         return '0'
+
+    @constant
+    def PROMPT():
+        return _('HUD')
 
 HUD_DEFAULTS = Defaults()
 

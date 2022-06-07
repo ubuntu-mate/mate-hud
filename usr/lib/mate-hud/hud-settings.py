@@ -54,33 +54,44 @@ class HUDCurrentSettings():
     def menu_separator(self):
         return get_string( 'org.mate.hud', None, 'menu-separator' )
 
+    @property
+    def use_prompt(self):
+        return get_string( 'org.mate.hud', None, 'prompt' ) != ''
+
+    @property
+    def prompt(self):
+        return get_string( 'org.mate.hud', None, 'prompt' )
     # Add new properties here that return the current value of a gsettings key
 
 class HUDSettingsWindow(Gtk.Window):
     # Add 'widget-name': 'HUDCurrentSettings property name' when adding a new option
     widget_property_map = {
-        'shortcut': 'shortcut',
+        'shortcut':        'shortcut',
         'custom-shortcut': 'shortcut',
-        'theme': 'rofi_theme',
-        'use-width': 'use_custom_width',
-        'width': 'custom_width',
-        'width-units': 'custom_width_units',
-        'monitor': 'monitor',
-        'location': 'location',
-        'separator': 'menu_separator',
-        'recently-used': 'recently_used_max'
+        'theme':           'rofi_theme',
+        'use-width':       'use_custom_width',
+        'width':           'custom_width',
+        'width-units':     'custom_width_units',
+        'monitor':         'monitor',
+        'location':        'location',
+        'separator':       'menu_separator',
+        'recently-used':   'recently_used_max',
+        'use-prompt':      'use_prompt',
+        'prompt':          'prompt'
     }
 
     widget_signal_map = {
     #   widget:                [ signal,          function_name ]
         'theme':               [ "changed",       'selection_changed' ],
-        'use-width':           [ "toggled",       'selection_changed' ],
+        'use-width':           [ "toggled",       'use_custom_width_toggled' ],
         'width':               [ "changed",       'selection_changed' ],
         'width-units':         [ "changed",       'selection_changed' ],
         'monitor':             [ "changed",       'selection_changed' ],
         'location':            [ "changed",       'selection_changed' ],
         'separator':           [ "changed",       'selection_changed' ],
         'recently-used':       [ "value-changed", 'selection_changed' ],
+        'use-prompt':          [ "toggled",       'use_prompt_toggled' ],
+        'prompt':              [ "changed",       'selection_changed' ],
         'shortcut':            [ "changed",       'shortcut_selector_changed' ],
         'custom-shortcut':     [ "clicked",       'on_shortcut_clicked' ],
         'reset-recently-used': [ "clicked",       'reset_recently_used' ],
@@ -102,7 +113,8 @@ class HUDSettingsWindow(Gtk.Window):
              'rofi-theme',
              'menu-separator',
              'custom-width',
-             'recently-used-max' ]
+             'recently-used-max',
+             'prompt' ]
 
     valid_units = [ 'px', 'em', 'ch', '%' ]
     single_modifier_keys = [ 'Alt_L', 'Alt_R', 'Ctrl_L', 'Ctrl_R', 'Super_L', 'Super_R' ]
@@ -144,12 +156,23 @@ class HUDSettingsWindow(Gtk.Window):
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
+        lbl_prompt = Gtk.Label(label=_("HUD Prompt: "), xalign=0,
+                              tooltip_text=_("HUD prompt. Default is blank for 'HUD' localized if possible."))
+        hbox.pack_start(lbl_prompt, True, True, 0)
+        hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        ckb_prompt = Gtk.CheckButton(name='use-prompt')
+        hbox_.pack_start(ckb_prompt, True, True, 0)
+        entry_prompt = Gtk.Entry(name='prompt')
+        hbox_.pack_start(entry_prompt, False, True, 0)
+        hbox.pack_start(hbox_, False, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         lbl_width = Gtk.Label(label=_("Custom Width: "), xalign=0,
                               tooltip_text=_("Override the width of the HUD specified in the theme"))
         hbox.pack_start(lbl_width, True, True, 0)
         hbox_ = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         ckb_width = Gtk.CheckButton(name='use-width')
-        ckb_width.connect("toggled", self.use_custom_width_toggled)
         hbox_.pack_start(ckb_width, True, True, 0)
         self.width_adjustments = {
             'px': Gtk.Adjustment(lower=0, upper=7680, step_increment=10, page_increment=100, page_size=0, value=600),
@@ -285,6 +308,14 @@ class HUDSettingsWindow(Gtk.Window):
         use_cw = button.get_active()
         self.get_widget_by_name('width').set_visible(use_cw)
         self.get_widget_by_name('width-units').set_visible(use_cw)
+        self.selection_changed(button)
+        self.selection_changed(self.get_widget_by_name('width'))
+        self.selection_changed(self.get_widget_by_name('width-units'))
+
+    def use_prompt_toggled(self, button):
+        self.get_widget_by_name('prompt').set_visible(button.get_active())
+        self.selection_changed(button)
+        self.selection_changed(self.get_widget_by_name('prompt'))
 
     def recent_max_update_tooltip(self):
         w = self.get_widget_by_name('recently-used')
@@ -322,12 +353,16 @@ class HUDSettingsWindow(Gtk.Window):
         logging.info(_("Applying changes"))
 
         settings = Gio.Settings.new('org.mate.hud')
-        settings.set_string( 'shortcut',          btn_shortcut.get_label())
-        settings.set_string( 'hud-monitor',       self.cbx_monitor.get_active_text())
-        settings.set_string( 'location',          cbx_location.get_active_text())
-        settings.set_string( 'rofi-theme',        cbx_theme.get_active_text())
-        settings.set_string( 'menu-separator',    cbx_separator.get_active_text())
-        settings.set_int(    'recently-used-max', sb_recent_max.get_value_as_int())
+        settings.set_string( 'shortcut',          self.get_widget_by_name('custom-shortcut').get_label())
+        settings.set_string( 'hud-monitor',       self.get_widget_by_name('monitor').get_active_text())
+        settings.set_string( 'location',          self.get_widget_by_name('location').get_active_text())
+        settings.set_string( 'rofi-theme',        self.get_widget_by_name('theme').get_active_text())
+        settings.set_string( 'menu-separator',    self.get_widget_by_name('separator').get_active_text())
+        settings.set_int(    'recently-used-max', self.get_widget_by_name('recently-used').get_value_as_int())
+        if self.get_widget_by_name('use-prompt').get_active():
+            settings.set_string( 'prompt',        self.get_widget_by_name('prompt').get_text())
+        else:
+            settings.set_string( 'prompt',        '')
 
         if self.get_widget_by_name('use-width').get_active():
             settings.set_string('custom-width', \
@@ -435,6 +470,12 @@ class HUDSettingsWindow(Gtk.Window):
                     widget_width.set_value(int(width))
                 widget_units.set_active(self.valid_units.index(units))
                 widget_width.set_adjustment( self.width_adjustments[self.get_widget_by_name('width-units').get_active_text()] )
+
+        if not key or key == 'prompt':
+            use_prompt = HUDCurrentSettings().use_prompt
+            self.get_widget_by_name('use-prompt').set_active(use_prompt)
+            self.get_widget_by_name('prompt').set_text( HUDCurrentSettings().prompt )
+            self.get_widget_by_name('prompt').set_visible( use_prompt )
 
         if not key or key == 'hud-monitor':
             self.get_widget_by_name('monitor').set_active(HUD_DEFAULTS.VALID_MONITORS.index(get_monitor()))
