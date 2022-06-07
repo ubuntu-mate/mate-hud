@@ -1362,10 +1362,18 @@ if __name__ == "__main__":
         # the listeners don't work
         panel_listeners = setup_panel_change_handlers()
 
-        wm = pyinotify.WatchManager()
-        notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=vala_panel_change_handler)
-        notifier.start()
-        wm.add_watch(GLib.get_user_config_dir() + '/vala-panel/', pyinotify.IN_MODIFY, rec=True, auto_add=True)
+        vala_panel_config_dir = GLib.get_user_config_dir() + '/vala-panel/'
+        watch = True
+        if not os.path.isdir(vala_panel_config_dir):
+            try: os.mkdir(vala_panel_config_dir)
+            except: watch = False
+        if watch:
+            wm = pyinotify.WatchManager()
+            notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=vala_panel_change_handler)
+            notifier.start()
+            wm.add_watch(GLib.get_user_config_dir() + '/vala-panel/', pyinotify.IN_MODIFY, rec=True, auto_add=True)
+        else:
+            notifier = None
 
         # Do some initial setup, so we don't have to do it when the HUD is called
         change_rofi_theme(None, None)
@@ -1380,7 +1388,8 @@ if __name__ == "__main__":
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:
-            notifier.stop()
+            if notifier:
+                notifier.stop()
             terminate_appmenu_registrar()
             kill_process('plotinus')
             GLib.MainLoop().quit()
