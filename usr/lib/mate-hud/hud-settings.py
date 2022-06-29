@@ -272,7 +272,9 @@ class HUDSettingsWindow(Gtk.Window):
         style_context.add_provider_for_screen(
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
-        css = b"""
+        color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
+        text_color = rgba_to_hex(style_context.lookup_color('themefg_color')[1])
+        css = bytes("""
         entry.changed, combobox.changed button, button.changed, spinbutton.changed entry, checkbutton.changed check {
             border: solid #1fced2;
             background-color: #1fced2;
@@ -282,7 +284,7 @@ class HUDSettingsWindow(Gtk.Window):
         spinbutton.changed {
             color: #000
         }
-        """
+        """.replace('#1fced2', color).replace('#000', text_color).encode('utf-8'))
         provider.load_from_data(css)
 
     def get_widget_by_name(self, name, root=None):

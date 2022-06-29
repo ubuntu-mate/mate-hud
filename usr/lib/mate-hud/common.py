@@ -226,3 +226,19 @@ def get_theme_list(sort=False):
     if sort:
         themes.sort(key=sort_themes)
     return themes
+
+def rgba_to_hex(color):
+   """
+   Return hexadecimal string for :class:`Gdk.RGBA` `color`.
+   """
+   return "#{0:02x}{1:02x}{2:02x}".format(
+                                    int(color.red   * 255),
+                                    int(color.green * 255),
+                                    int(color.blue  * 255))
+
+def get_color(style_context, preferred_color, fallback_color):
+    color = rgba_to_hex(style_context.lookup_color(preferred_color)[1])
+    if color == '#000000':
+        color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
+    return color
+
