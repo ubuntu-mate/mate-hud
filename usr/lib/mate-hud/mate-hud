@@ -109,8 +109,6 @@ def format_path(path):
     result = result.replace('Root > ', '')
     result = result.replace('Label Empty > ', '')
     result = result.replace('_', '')
-    # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
-    STORE.menu_separator = get_menu_separator(pair=STORE.menu_separator_pair)
     return result.replace('>', u'\u0020\u0020' + STORE.menu_separator + u'\u0020\u0020').lstrip()
 
 def process_running(name):
@@ -466,6 +464,9 @@ def init_rofi():
     if STORE.current_win_name in STORE.recently_used.keys():
         STORE.recently_used_current_window = STORE.recently_used.get(STORE.current_win_name)
 
+    # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
+    STORE.menu_separator = get_menu_separator(pair=STORE.menu_separator_pair)
+
     # Allow closing the HUD with the same modifier key that opens it
     shortcut = get_shortcut()
     keyval, modifiers = Gtk.accelerator_parse(shortcut)
@@ -663,10 +664,13 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
     # --- Construct menu list ---
 
     potential_new_layers = []
-    def queue(potLayer, label, path):
+    def queue(potLayer, label, path, idx = None):
         # collects potentially new layers to check them against usedLayers
         # potLayer: ID of potential layer, label: None if nondescript, path
-        potential_new_layers.append([potLayer, label, path])
+        if idx == None:
+            potential_new_layers.append([potLayer, label, path])
+        else:
+            potential_new_layers.insert(idx, [potLayer, label, path])
 
     def explore(parent, path):
         for node in parent:
@@ -683,7 +687,8 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         # There theoretically could be a section that is also a submenu, so we have to handel this via queue
                         # submenus are more important than sections
                         if ':submenu' in element:
-                            queue(element[':submenu'][0], None, path + " > " + element['label'])
+                            idx = 0 if node[0] == 0 else None
+                            queue(element[':submenu'][0], None, path + " > " + element['label'], idx)
                             # We ignore whether or not a submenu points to a specific index, shouldn't matter because of the way the menu got exportet
                             # Worst that can happen are some duplicates
                             # Also we don't Start() directly which could mean we get nothing under this label but this shouldn't really happen because there shouldn't be two submenus
