@@ -80,6 +80,10 @@ class Defaults(object):
     def PROMPT():
         return _('HUD')
 
+    @constant
+    def RECENTLY_USED_DECORATION():
+        return u'\u2015' * 100
+
 HUD_DEFAULTS = Defaults()
 
 def get_bool(schema, path, key):

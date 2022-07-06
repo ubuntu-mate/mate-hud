@@ -111,7 +111,7 @@ def format_path(path):
     result = result.replace('_', '')
     # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
     STORE.menu_separator = get_menu_separator(pair=STORE.menu_separator_pair)
-    return result.replace('>', u'\u0020\u0020' + STORE.menu_separator + u'\u0020\u0020')
+    return result.replace('>', u'\u0020\u0020' + STORE.menu_separator + u'\u0020\u0020').lstrip()
 
 def process_running(name):
     uid = os.getuid()
@@ -461,40 +461,10 @@ def get_display_dpi():
         dpi = (width_dpi + height_dpi) / 2
     return round( dpi * scale )
 
-def get_menu(menuKeys):
-    """
-    Generate menu of available menu items.
-    """
-    if not menuKeys:
-        return ''
-    menuKeys = list(menuKeys)
-
-    ewmh = EWMH()
-    win = ewmh.getActiveWindow()
-    win_name = ewmh._getProperty('WM_CLASS', win)
-    # comes back in the format b'name\x00Name\x00' and we just want to keep name (\x00 is Null character)
-    win_name = bytes(bytearray(win_name)[:bytearray(win_name).index(0)]).decode('utf-8')
-    menu_recently_used = []
-    if win_name in STORE.recently_used.keys():
-        menu_recently_used = STORE.recently_used.get(win_name)
-    def sort_menu(item):
-        # We have to store the items with the separator changed back to some
-        # standard value to make sure it'll match regardless if someone changed
-        # the separator character.
-        item_fmt = item.replace(STORE.menu_separator, '>').lstrip()
-        if item_fmt in menu_recently_used:
-            return '%10s' % ( str(menu_recently_used.index(item_fmt)) )
-        else:
-            return item
-    if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE:
-        menuKeys.sort(key=sort_menu)
-        recently_used_decoration = u'\u2015' * 100
-        if win_name in STORE.recently_used.keys():
-            menuKeys.insert(len(menu_recently_used), recently_used_decoration)
-            menuKeys.insert(0, 'Recently Used   ' + recently_used_decoration)
-    else:
-        menuKeys.sort()
-    menu_string = '\n'.join(menuKeys)
+def init_rofi():
+    STORE.recently_used_current_window = []
+    if STORE.current_win_name in STORE.recently_used.keys():
+        STORE.recently_used_current_window = STORE.recently_used.get(STORE.current_win_name)
 
     # Allow closing the HUD with the same modifier key that opens it
     shortcut = get_shortcut()
@@ -511,11 +481,10 @@ def get_menu(menuKeys):
            '-click-to-exit',
            '-line-padding', '2',
            '-kb-cancel', 'Escape' + shortcut,
-           '-sync', # withhold display until menu entries are ready
            '-monitor', monitor_rofi_argument(STORE.monitor), # show in the current application or current window
            '-theme', STORE.rofi_theme,
            '-theme-str', 'window { location: ' + STORE.location + '; ' + \
-                         '         anchor: ' + STORE.location + '; }' ] # Override the window location to the top left of the current window
+                         '         anchor: ' + STORE.location + '; }' ] # Override the window location
     if STORE.monitor == 'monitor':
         margin = STORE.margin
         if margin[0] >= 0 or margin[1] >= 0:
@@ -529,21 +498,46 @@ def get_menu(menuKeys):
     if STORE.custom_width != HUD_DEFAULTS.CUSTOM_WIDTH:
         cmd += [ '-theme-str', ' window { width: ' + STORE.custom_width + STORE.custom_width_units + '; } ' ]
 
-    menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    menu_cmd.stdin.write(menu_string.encode('utf-8'))
-    menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
-    menu_cmd.stdin.close()
+    STORE.rofi_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    if STORE.recently_used_current_window:
+        STORE.rofi_process.stdin.write(('Recently Used   ' + HUD_DEFAULTS.RECENTLY_USED_DECORATION + '\n  ' + '\n  '.join(STORE.recently_used_current_window).replace('>',STORE.menu_separator) + '\n' + HUD_DEFAULTS.RECENTLY_USED_DECORATION + '\n').encode('utf-8'))
+        STORE.rofi_process.stdin.flush()
+
+def write_menuitem(menu_item):
+    menu_string = menu_item + '\n'
+
+    if menu_item in STORE.recently_used_current_window: return
+    try:
+        STORE.rofi_process.stdin.write(('  ' + menu_string).encode('utf-8'))
+        STORE.rofi_process.stdin.flush()
+    except BrokenPipeError:
+        # Rofi process terminated either we selected an option, or used the
+        # shortcut to close before everything was piped to rofi
+        pass
+
+def get_menu():
+    """
+    Generate menu of available menu items.
+    """
+    if not STORE.rofi_process and STORE.rofi_process.poll() is not None:
+        logging.debug("get_menu() rofi_process was terminated before asking for menu_result")
+        return ''
+
+    menu_result = STORE.rofi_process.communicate()[0].decode('utf8').strip()
+    STORE.rofi_process.stdin.close()
+    STORE.rofi_process = None
+    STORE.recently_used_current_window = None
 
     # Add the menu result to the list of recently used commands for the application
-    if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE and menu_result and not recently_used_decoration in menu_result:
+    if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE and menu_result and not HUD_DEFAULTS.RECENTLY_USED_DECORATION in menu_result:
         result_fmt = menu_result.replace(STORE.menu_separator, '>').lstrip()
-        if win_name not in STORE.recently_used.keys():
-            STORE.recently_used.update({ win_name: [] })
-        if result_fmt in STORE.recently_used.get(win_name):
-            STORE.recently_used.get(win_name).remove(result_fmt) # we're moving it to the front
-        STORE.recently_used.get(win_name).insert(0, result_fmt)
+        if STORE.current_win_name not in STORE.recently_used.keys():
+            STORE.recently_used.update({ STORE.current_win_name: [] })
+        if result_fmt in STORE.recently_used.get(STORE.current_win_name):
+            STORE.recently_used.get(STORE.current_win_name).remove(result_fmt) # we're moving it to the front
+        STORE.recently_used.get(STORE.current_win_name).insert(0, result_fmt)
         if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_UNLIMITED:
-            STORE.recently_used[win_name] = STORE.recently_used.get(win_name)[:STORE.recently_used_max]
+            STORE.recently_used[STORE.current_win_name] = STORE.recently_used.get(STORE.current_win_name)[:STORE.recently_used_max]
         Gio.Settings.new('org.mate.hud').set_string('recently-used', json.dumps(STORE.recently_used))
     return menu_result
 
@@ -551,7 +545,6 @@ def get_menu(menuKeys):
   try_appmenu_interface
 """
 def try_appmenu_interface(window_id):
-    logging.debug('starting try appmenu: %s', str(time.perf_counter()))
     # --- Get Appmenu Registrar DBus interface
     registrar_running = process_running("appmenu-registrar")
     session_bus = dbus.SessionBus()
@@ -559,7 +552,7 @@ def try_appmenu_interface(window_id):
         appmenu_registrar_object = session_bus.get_object('com.canonical.AppMenu.Registrar', '/com/canonical/AppMenu/Registrar')
         appmenu_registrar_object_iface = dbus.Interface(appmenu_registrar_object, 'com.canonical.AppMenu.Registrar')
     except dbus.exceptions.DBusException:
-        logging.info('Unable to register with com.canonical.AppMenu.Registrar.')
+        logging.debug('Unable to register with com.canonical.AppMenu.Registrar.')
         return False
 
     # --- Get dbusmenu object path
@@ -568,7 +561,7 @@ def try_appmenu_interface(window_id):
         if not registrar_running:
             terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
-        logging.info('Unable to get dbusmenu object path.')
+        logging.debug('Unable to get dbusmenu object path.')
         return False
 
     # --- Access dbusmenu items
@@ -576,7 +569,7 @@ def try_appmenu_interface(window_id):
         dbusmenu_object = session_bus.get_object(dbusmenu_bus, dbusmenu_object_path)
         dbusmenu_object_iface = dbus.Interface(dbusmenu_object, 'com.canonical.dbusmenu')
     except ValueError:
-        logging.info('Unable to access dbusmenu items.')
+        logging.debug('Unable to access dbusmenu items.')
         return False
 
     dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
@@ -608,16 +601,16 @@ def try_appmenu_interface(window_id):
 
         if len(item_children) == 0:
             if new_path not in blacklist:
-                dbusmenu_item_dict[format_path(new_path)] = item_id
+                menu_item = format_path(new_path)
+                dbusmenu_item_dict[menu_item] = item_id
+                write_menuitem(menu_item)
         else:
             blacklist.append(new_path)
             for child in item_children:
                 expanse_all_menu_with_dbus(child, False, new_path)
 
     expanse_all_menu_with_dbus(dbusmenu_root_item[1], True, "")
-    menuKeys = dbusmenu_item_dict.keys()
-    logging.debug('starting get menu: %s', str(time.perf_counter()))
-    menu_result = get_menu(menuKeys)
+    menu_result = get_menu()
 
     # --- Use dmenu result
     if menu_result in dbusmenu_item_dict:
@@ -640,7 +633,6 @@ def try_appmenu_interface(window_id):
   try_gtk_interface
 """
 def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list):
-    logging.debug('starting try gtk interface: %s', str(time.perf_counter()))
     registrar_running = process_running("appmenu-registrar")
     session_bus = dbus.SessionBus()
     # --- Ask for menus over DBus --- Credit @1931186
@@ -708,6 +700,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         menu_action = str(element['action']).split(".",1)[1]
                         action_path = format_path(path + " > " + element['label'])
                         gtk_menubar_action_dict[action_path] = menu_action
+                        write_menuitem(action_path)
                         if 'target' in element:
                             gtk_menubar_action_target_dict[action_path] = element['target']
                 else:
@@ -735,8 +728,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
     menuKeys = gtk_menubar_action_dict.keys()
     if len(menuKeys) == 0:
         return False
-    logging.debug('starting get menu: %s', str(time.perf_counter()))
-    menu_result = get_menu(menuKeys)
+    menu_result = get_menu()
 
     # --- Use menu result
     if menu_result in gtk_menubar_action_dict:
@@ -812,13 +804,14 @@ class DbusPlotinusMenu(object):
         menu_item    = DbusPlotinusMenuItem(properties)
 
         self.actions[menu_item.text] = command
+        write_menuitem(menu_item.text)
 
 
 def try_plotinus_interface(gtk_win_object_path):
-    x = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
-    x.get_results()
-    menu_result = get_menu(x.actions.keys())
-    x.activate(menu_result)
+    plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
+    plotinus.get_results()
+    menu_result = get_menu()
+    plotinus.activate(menu_result)
 
 def hud(widget, keystr, user_data):
     logging.debug("Handling %s", str(user_data))
@@ -830,6 +823,11 @@ def hud(widget, keystr, user_data):
         logging.debug('ewmh.getActiveWindow returned None, giving up')
         return
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
+    win_name = ewmh._getProperty('WM_CLASS', win)
+    # comes back in the format b'name\x00Name\x00' and we just want to keep name (\x00 is Null character)
+    win_name = bytes(bytearray(win_name)[:bytearray(win_name).index(0)]).decode('utf-8')
+    STORE.current_win_name = win_name
+    init_rofi()
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menubar_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
@@ -840,7 +838,8 @@ def hud(widget, keystr, user_data):
         [i.decode('utf8') if isinstance(i, bytes) \
         else i for i in [gtk_bus_name, gtk_menubar_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
 
-    logging.debug('Window id is : %s', window_id)
+    logging.debug('Window id: %s', window_id)
+    logging.debug('Window name: %s', win_name)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
     logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menubar_object_path)
     logging.debug('_GTK_APPLICATION_OBJECT_PATH: %s', gtk_app_object_path)
@@ -873,14 +872,7 @@ def hud(widget, keystr, user_data):
         return
     if STORE.plotinus_enabled:
         if gtk_win_object_path:
-            logging.debug('GTK menubar found nothing; trying plotinus interface.')
-            plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
-            plotinus.get_results()
-            menu_result = get_menu(plotinus.actions.keys())
-            if menu_result:
-                plotinus.activate(menu_result)
-            else:
-                logging.debug('Plotinus found nothing.')
+            try_plotinus_interface(gtk_win_object_path)
         else:
             logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
     else:
