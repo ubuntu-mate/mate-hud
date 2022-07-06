@@ -262,10 +262,6 @@ class HUDSettingsWindow(Gtk.Window):
         self.connect_to_signals()
 
     def add_custom_css_classes(self):
-        ## Add custom style classes for changed cells
-        ## I don't really like doing it this way, but adding the
-        ## error or warning class to the fields didn't do a good
-        ## enough job indicating there was a change
         screen = Gdk.Screen.get_default()
         provider = Gtk.CssProvider()
         style_context = Gtk.StyleContext()
@@ -273,18 +269,17 @@ class HUDSettingsWindow(Gtk.Window):
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
         color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
-        text_color = rgba_to_hex(style_context.lookup_color('themefg_color')[1])
         css = bytes("""
-        entry.changed, combobox.changed button, button.changed, spinbutton.changed entry, checkbutton.changed check {
+        entry.changed,
+        combobox.changed button.combo,
+        comboboxtext.changed button.combo,
+        button.changed,
+        spinbutton.changed entry,
+        checkbutton.changed check {
             border: solid #1fced2;
-            background-color: #1fced2;
-            color: #000;
             border-width: 2px;
         }
-        spinbutton.changed {
-            color: #000
-        }
-        """.replace('#1fced2', color).replace('#000', text_color).encode('utf-8'))
+        """.replace('#1fced2', color).encode('utf-8'))
         provider.load_from_data(css)
 
     def get_widget_by_name(self, name, root=None):
