@@ -43,7 +43,7 @@ shortcut by default.
 `mate-hud.py` will not execute until those gsettings keys are created,
 which the `mate-hud` Debian package will do, and the `enabled` key
 is set to *True* using something like `dconf-editor`. MATE Tweak
-will soon add the functionality the endable/disable `mate-hud`.
+will soon add the functionality the enable/disable `mate-hud`.
 
 ### Themes
 
