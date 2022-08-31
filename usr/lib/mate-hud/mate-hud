@@ -52,6 +52,7 @@ class Store(object):
             cls.instance.plotinus_bus_path = None
             cls.instance.panels = []
             cls.instance.prompt = ''
+            cls.instance.rofi_process = None
         return cls.instance
 STORE = Store()
 
@@ -507,7 +508,7 @@ def init_rofi():
 def write_menuitem(menu_item):
     menu_string = menu_item + '\n'
 
-    if menu_item in STORE.recently_used_current_window: return
+    if STORE.recently_used_current_window and menu_item in STORE.recently_used_current_window: return
     try:
         STORE.rofi_process.stdin.write(('  ' + menu_string).encode('utf-8'))
         STORE.rofi_process.stdin.flush()
@@ -572,6 +573,9 @@ def try_appmenu_interface(window_id):
     except ValueError:
         logging.debug('Unable to access dbusmenu items.')
         return False
+
+    # --- Valid menu, so init rofi process to capture keypresses.
+    init_rofi()
 
     dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
     dbusmenu_item_dict = dict()
@@ -705,6 +709,9 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         menu_action = str(element['action']).split(".",1)[1]
                         action_path = format_path(path + " > " + element['label'])
                         gtk_menubar_action_dict[action_path] = menu_action
+                        # If rofi isn't running already this is when we know we have a menu finally, so start it up
+                        if not STORE.rofi_process:
+                            init_rofi()
                         write_menuitem(action_path)
                         if 'target' in element:
                             gtk_menubar_action_target_dict[action_path] = element['target']
@@ -799,8 +806,14 @@ class DbusPlotinusMenu(object):
             name, paths = self.interface.GetCommands(self.win_path)
             commands        = [self.session.get_object(name, path) for path in paths]
 
+            if commands:
+                init_rofi()
+            else:
+                return False
+
             for command in commands:
                 self.collect_entries(command)
+            return True
 
     def collect_entries(self, command):
         interface    = dbus.Interface(command, dbus_interface='org.freedesktop.DBus.Properties')
@@ -811,12 +824,15 @@ class DbusPlotinusMenu(object):
         self.actions[menu_item.text] = command
         write_menuitem(menu_item.text)
 
-
 def try_plotinus_interface(gtk_win_object_path):
     plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
-    plotinus.get_results()
+    plotinus_success = plotinus.get_results()
+    if not plotinus_success:
+        return False
     menu_result = get_menu()
-    plotinus.activate(menu_result)
+    if menu_result:
+        plotinus.activate(menu_result)
+    return True
 
 def hud(widget, keystr, user_data):
     logging.debug("Handling %s", str(user_data))
@@ -832,7 +848,6 @@ def hud(widget, keystr, user_data):
     # comes back in the format b'name\x00Name\x00' and we just want to keep name (\x00 is Null character)
     win_name = bytes(bytearray(win_name)[:bytearray(win_name).index(0)]).decode('utf-8')
     STORE.current_win_name = win_name
-    init_rofi()
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menubar_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
@@ -875,9 +890,14 @@ def hud(widget, keystr, user_data):
         logging.debug('_GTK_MENUBAR_OBJECT_PATH in None. Unable to use the menubar interface.')
     if gtkmenubar_success:
         return
+    else:
+        logging.debug('GTK menubar found nothing.')
     if STORE.plotinus_enabled:
+        logging.debug('Trying Plotinus interface')
         if gtk_win_object_path:
-            try_plotinus_interface(gtk_win_object_path)
+            success = try_plotinus_interface(gtk_win_object_path)
+            if not success:
+                logging.debug('Plotinus found nothing. Giving up.')
         else:
             logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
     else:
