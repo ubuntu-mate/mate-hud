@@ -206,6 +206,14 @@ def get_recently_used_max():
         logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + recently_used_max)
     return recently_used_max
 
+def get_transparency():
+    transparency = 100
+    try:
+        transparency = get_number('org.mate.hud', None, 'transparency')
+    except:
+        logging.error(_('org.mate.hud gsettings not found. Defaulting to ') + transparency)
+    return transparency
+
 def isrtl():
     window = Gtk.Window()
     style_context = window.get_style_context()
@@ -245,4 +253,3 @@ def get_color(style_context, preferred_color, fallback_color):
     if color == '#000000':
         color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
     return color
-

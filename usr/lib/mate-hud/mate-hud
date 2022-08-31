@@ -425,7 +425,7 @@ def get_theme_overrides():
 
     selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
     selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
-    alpha = get_number( 'org.mate.hud', None, 'transparency' ) * 255 // 100
+    alpha = get_transparency() * 255 // 100
     # Overwrite some of the theme options
     theme_options += 'listview { background-color: ' + bg_color + f'{alpha:x}' + '; ' + \
                      '           border-color: ' + selected_bg_color + '; } ' + \

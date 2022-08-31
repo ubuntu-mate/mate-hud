@@ -61,6 +61,10 @@ class HUDCurrentSettings():
     @property
     def prompt(self):
         return get_string( 'org.mate.hud', None, 'prompt' )
+
+    @property
+    def transparency(self):
+        return get_number( 'org.mate.hud', None, 'transparency' )
     # Add new properties here that return the current value of a gsettings key
 
 class HUDSettingsWindow(Gtk.Window):
@@ -77,7 +81,8 @@ class HUDSettingsWindow(Gtk.Window):
         'separator':       'menu_separator',
         'recently-used':   'recently_used_max',
         'use-prompt':      'use_prompt',
-        'prompt':          'prompt'
+        'prompt':          'prompt',
+        'transparency':    'transparency'
     }
 
     widget_signal_map = {
@@ -94,6 +99,7 @@ class HUDSettingsWindow(Gtk.Window):
         'prompt':              [ "changed",       'selection_changed' ],
         'shortcut':            [ "changed",       'shortcut_selector_changed' ],
         'custom-shortcut':     [ "clicked",       'on_shortcut_clicked' ],
+        'transparency':        [ "value-changed", 'selection_changed' ],
         'reset-recently-used': [ "clicked",       'reset_recently_used' ],
         'reset-to-defaults':   [ "clicked",       'reset_to_defaults' ],
         'reset':               [ "clicked",       'reset_view' ],
@@ -221,6 +227,17 @@ class HUDSettingsWindow(Gtk.Window):
         for u in range(len(HUD_DEFAULTS.VALID_SEPARATOR_PAIRS)):
             cbx_separator.insert(u, str(u), HUD_DEFAULTS.VALID_SEPARATOR_PAIRS[u])
         hbox.pack_start(cbx_separator, False, True, 0)
+        box_main.pack_start(hbox, True, True, 0)
+
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
+        lbl_transparency = Gtk.Label(label=_("Transparency: "), xalign=0,
+                                   tooltip_text=_("Transparency of the HUD window\n" + \
+                                                  "  0: Completely transparent\n" + \
+                                                  "100: Solid color"))
+        hbox.pack_start(lbl_transparency, True, True, 0)
+        adjustment = Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=5, page_size=0, value=0)
+        sb_transparency = Gtk.SpinButton(xalign=1, name='transparency', adjustment=adjustment)
+        hbox.pack_start(sb_transparency, False, True, 0)
         box_main.pack_start(hbox, True, True, 0)
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
@@ -357,6 +374,7 @@ class HUDSettingsWindow(Gtk.Window):
         settings.set_string( 'rofi-theme',        self.get_widget_by_name('theme').get_active_text())
         settings.set_string( 'menu-separator',    self.get_widget_by_name('separator').get_active_text())
         settings.set_int(    'recently-used-max', self.get_widget_by_name('recently-used').get_value_as_int())
+        settings.set_int(    'transparency',      self.get_widget_by_name('transparency').get_value_as_int())
         if self.get_widget_by_name('use-prompt').get_active():
             settings.set_string( 'prompt',        self.get_widget_by_name('prompt').get_text())
         else:
@@ -487,6 +505,9 @@ class HUDSettingsWindow(Gtk.Window):
         if not key or key == 'recently-used-max':
             self.get_widget_by_name('recently-used').set_value(get_recently_used_max())
             self.recent_max_update_tooltip()
+
+        if not key or key == 'transparency':
+            self.get_widget_by_name('transparency').set_value(get_transparency())
 
 if __name__ == "__main__":
     setproctitle.setproctitle('hud-settings')
