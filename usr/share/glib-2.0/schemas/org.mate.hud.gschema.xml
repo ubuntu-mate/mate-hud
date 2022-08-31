@@ -123,5 +123,17 @@
         Set to 0 to disable the timeout.
       </description>
     </key>
+    <key type="i" name="transparency">
+      <default>100</default>
+      <range min='0' max='100'/>
+      <summary>The transparency of the HUD window background</summary>
+      <description>
+        The transparency of the HUD window background
+
+        0 completely transparent
+
+        100 solid color
+      </description>
+    </key>
   </schema>
 </schemalist>
