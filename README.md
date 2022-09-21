@@ -42,8 +42,10 @@ shortcut by default.
 
 `mate-hud.py` will not execute until those gsettings keys are created,
 which the `mate-hud` Debian package will do, and the `enabled` key
-is set to *True* using something like `dconf-editor`. MATE Tweak
-will soon add the functionality the endable/disable `mate-hud`.
+is set to *True* using something like `dconf-editor`. 
+
+`mate-hud`
+can be enabled or disabled by MATE Tweak under `Panel > Panel Features > Enable HUD`.
 
 ### Themes
 
