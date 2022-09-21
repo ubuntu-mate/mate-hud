@@ -28,6 +28,9 @@ import DistUtilsExtra.command.build_extra
 import DistUtilsExtra.command.build_i18n
 import DistUtilsExtra.command.clean_i18n
 
+import pkgconfig
+rofi_prefix = pkgconfig.variables('rofi').get('prefix')
+
 __VERSION__ = '22.04.4'
 
 def datafilelist(installbase, sourcebase):
@@ -41,12 +44,36 @@ def datafilelist(installbase, sourcebase):
 
 data_files = [
     ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/mate-hud']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/common.py']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/hud-settings.py']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/i18n.py']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/getkey_dialog.py']),
+    ('{prefix}/lib/mate-hud/'.format(prefix=sys.prefix), ['usr/lib/mate-hud/getkey_dialog.ui']),
+    ('{prefix}/share/applications/'.format(prefix=sys.prefix), ['usr/share/applications/hud-settings.desktop']),
     ('{prefix}/share/mate/autostart/'.format(prefix=sys.prefix), ['usr/share/mate/autostart/mate-hud.desktop']),
     ('{prefix}/share/glib-2.0/schemas/'.format(prefix=sys.prefix), ['usr/share/glib-2.0/schemas/org.mate.hud.gschema.xml']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-hidpi.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded-hidpi.rasi']),
+    ('{prefix}/share/pixmaps/'.format(prefix=sys.prefix), ['usr/share/pixmaps/mate-hud.svg']),
+    ('{prefix}/share/icons/hicolor/16x16/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/16x16/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/22x22/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/22x22/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/24x24/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/24x24/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/32x32/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/32x32/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/48x48/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/48x48/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/64x64/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/64x64/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/128x128/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/128x128/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/256x256/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/256x256/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/512x512/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/512x512/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/16x16@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/16x16@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/22x22@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/22x22@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/24x24@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/24x24@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/32x32@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/32x32@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/48x48@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/48x48@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/64x64@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/64x64@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/128x128@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/128x128@2/apps/mate-hud.png']),
+    ('{prefix}/share/icons/hicolor/scalable/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/scalable/apps/mate-hud.svg']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-hidpi.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-rounded-hidpi.rasi']),
 ]
 
 cmdclass = {

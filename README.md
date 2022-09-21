@@ -30,12 +30,13 @@ includes an implementation of the `com.canonical.AppMenu.Registrar` DBus
 service. Applications exporting their menu via `dbusmenu` need this
 service to run. `mate-hud.py` tries to get the menu of the currently
 focused window, lists possible actions and asks the user which one to
-run. `mate-hud.py`, binds itself to the `<Ctrl><Alt>space` keyboard
-shortcut by default.
+run. `mate-hud.py`, binds itself to the `Alt_L` keyboard
+shortcut by default (can be changed in the settings GUI).
 
-### Gsettings
+### Settings
 
-`mate-hud.py` reads two gsettings keys:
+`mate-hud` includes a small GUI for configuring settings: `hud-settings.py`
+which should show up in your applications menu. `mate-hud.py` reads two gsettings keys:
 
   * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
   * `org.mate.hud`: `rofi-theme` (Default: `mate-hud`)
@@ -44,25 +45,18 @@ shortcut by default.
 which the `mate-hud` Debian package will do, and the `enabled` key
 is set to *True* using something like `dconf-editor`. 
 
-`mate-hud`
-can be enabled or disabled by MATE Tweak under `Panel > Panel Features > Enable HUD`.
+`mate-hud` can be enabled or disabled by MATE Tweak under `Panel > Panel Features > Enable HUD`.
 
 ### Themes
 
-`mate-hud.py` uses the `mate-hud` theme by default.
-The included `mate-hud` and `mate-hud-rounded` themes try to use colors
-from your GTK theme. You can see the available rofi themes in
-`/usr/share/rofi/themes` or add your own to `~/.local/share/rofi/themes`
-Theme files are named `<theme name>.rasi` and you can change the theme using
-the following command:
-
-```
-gsettings set org.mate.hud rofi-theme <theme name>
-```
+`mate-hud.py` uses the `mate-hud-rounded` theme by default.
+The included `mate-hud` and `mate-hud-rounded` themes and their HiDPI variants
+try to use colors from your GTK theme and your system font. You can see
+the available themes and make changes with the included settings program.
 
 ### Manual Setup
 
-  * The `vala-panel-appmenu` applet for MATE should be added to a panel.
+  * The `vala-panel-appmenu` applet for MATE or XFCE should be added to a panel.
   * `mate-hud.py` should be started on session start-up.
   * The following should be added to the users `~/.profile` or `/etc/profile.d` or `/etc/X11/Xsession.d/`.
 
@@ -84,11 +78,14 @@ export UBUNTU_MENUPROXY=1
   * `mate-desktop`
   * `python3`
   * `python3-dbus`
+  * `python3-pkgconfig`
+  * `python3-pyinotify`
   * `python3-setproctitle`
   * `python3-xlib`
   * `rofi`
   * `unity-gtk2-module`
   * `unity-gtk3-module`
+  * `plotinus` (optional - additional menu backend for some GTK3 programs without a traditional menu)
 
 A reference package for Debian/Ubuntu is available from:
 

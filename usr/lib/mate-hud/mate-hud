@@ -4,10 +4,15 @@ import gi
 gi.require_version('Gdk', '3.0')
 gi.require_version("Gtk", "3.0")
 
+import configparser
 import dbus
+import json
 import logging
 import os
+import pkgconfig
 import psutil
+import pyinotify
+import re
 import setproctitle
 import subprocess
 import time
@@ -16,26 +21,40 @@ from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import Gio, GLib, Gtk, Gdk, GObject
 from Xlib import display, protocol, X, Xatom, error
 
-def get_desktop_env():
-    desktop_env = ''
-    try:
-        desktop_env = os.environ['XDG_CURRENT_DESKTOP']
-    except:
-        pass
-    if not desktop_env:
-        try:
-            desktop_env = os.environ['XDG_SESSION_DESKTOP']
-        except:
-            pass
-    return desktop_env
+from common import *
 
-if 'XFCE' in get_desktop_env():
-    try:
-        gi.require_version("Xfconf", "0")
-        from gi.repository import Xfconf
-        Xfconf.init()
-    except:
-        logging.debug('running XFCE, but xfconf gi repository not available')
+class Store(object):
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Store, cls).__new__(cls)
+            # Set up the default store variables
+            cls.instance.margin = [ -1, -1 ]
+            cls.instance.last_gtk_theme = ''
+            cls.instance.gtk_theme = ''
+            cls.instance.last_font_name = ''
+            cls.instance.font_name = ''
+            cls.instance.dpi = 0
+            cls.instance.rofi_theme = HUD_DEFAULTS.THEME
+            cls.instance.rofi_theme_overrides = None
+            cls.instance.mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
+            cls.instance.themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
+            cls.instance.monitor = HUD_DEFAULTS.MONITOR
+            cls.instance.location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
+            cls.instance.custom_width = HUD_DEFAULTS.CUSTOM_WIDTH
+            cls.instance.menu_separator_pair = get_menu_separator_pair()
+            cls.instance.menu_separator = get_menu_separator()
+            cls.instance.recently_used = None
+            cls.instance.recently_used_max = get_number( 'org.mate.hud', None, 'recently-used-max' )
+            cls.instance.plotinus_enabled = False
+            cls.instance.plotinus_schema = None
+            cls.instance.plotinus_path = None
+            cls.instance.plotinus_bus_name = None
+            cls.instance.plotinus_bus_path = None
+            cls.instance.panels = []
+            cls.instance.prompt = ''
+            cls.instance.rofi_process = None
+        return cls.instance
+STORE = Store()
 
 class EWMH:
     """This class provides the ability to get and set properties defined
@@ -91,35 +110,7 @@ def format_path(path):
     result = result.replace('Root > ', '')
     result = result.replace('Label Empty > ', '')
     result = result.replace('_', '')
-    return result.replace('>', u'\u0020\u0020\u00BB\u0020\u0020')
-
-def get_bool(schema, path, key):
-    if path:
-        settings = Gio.Settings.new_with_path(schema, path)
-    else:
-        settings = Gio.Settings.new(schema)
-    return settings.get_boolean(key)
-
-def get_string(schema, path, key):
-    if path:
-        settings = Gio.Settings.new_with_path(schema, path)
-    else:
-        settings = Gio.Settings.new(schema)
-    return settings.get_string(key)
-
-def get_number(schema, path, key):
-    if path:
-        settings = Gio.Settings.new_with_path(schema, path)
-    else:
-        settings = Gio.Settings.new(schema)
-    return settings.get_int(key)
-
-def get_list(schema, path, key):
-    if path:
-        settings = Gio.Settings.new_with_path(schema, path)
-    else:
-        settings = Gio.Settings.new(schema)
-    return settings.get_strv(key)
+    return result.replace('>', u'\u0020\u0020' + STORE.menu_separator + u'\u0020\u0020').lstrip()
 
 def process_running(name):
     uid = os.getuid()
@@ -132,6 +123,18 @@ def process_running(name):
             if name == proc['name'] and uid == proc['uids'].real:
                 return True
     return False
+
+def process_get_cmdline(name):
+    uid = os.getuid()
+    for process in psutil.process_iter():
+        try:
+            proc = process.as_dict(attrs=['name', 'uids'])
+        except psutil.NoSuchProcess:
+            pass
+        else:
+            if name == proc['name'] and uid == proc['uids'].real:
+                return process.as_dict(attrs=['cmdline'])['cmdline']
+    return []
 
 def kill_process(name):
     uid = os.getuid()
@@ -151,64 +154,294 @@ def kill_process(name):
 def terminate_appmenu_registrar():
     # TODO:
     #  - Use Dbus Quit method.
-    #  - Add checks for other Desktop Environments.
-    if 'MATE' in get_desktop_env():
-        if process_running('appmenu-registrar') and not process_running('appmenu-mate'):
-            kill_process('appmenu-registrar')
-    elif process_running('xfce4-panel'):
+    appmenu_loaded = False
+    if process_running('mate-panel'):
+        applets = get_list( 'org.mate.panel', '/org/mate/panel/general/', 'object-id-list')
+        for a in applets:
+            if get_string( 'org.mate.panel.object', '/org/mate/panel/objects/' + a + '/', 'applet-iid' ) == 'AppmenuAppletFactory::AppmenuApplet':
+                appmenu_loaded = True
+                break
+    if not appmenu_loaded and process_running('xfce4-panel'):
+        bus = dbus.SessionBus()
         try:
-            xfc_panel = Xfconf.Channel.new("xfce4-panel")
-            panels = xfc_panel.get_arrayv("/panels")
+            object = bus.get_object("org.xfce.Xfconf", "/org/xfce/Xfconf")
+            interface = dbus.Interface(object, dbus_interface="org.xfce.Xfconf")
+            panels = list(interface.GetProperty( 'xfce4-panel', '/panels' ))
             plugin_ids = []
             for panel in panels:
-                plugin_ids += xfc_panel.get_arrayv("/panels/panel-" + str(panel) + "/plugin-ids")
-            appmenu_loaded = False
+                plugin_ids += list(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/plugin-ids"))
             for plugid in plugin_ids:
-                if ( xfc_panel.get_string("/plugins/plugin-" + str(plugid), "") == 'appmenu' ):
+                if ( str(interface.GetProperty('xfce4-panel', "/plugins/plugin-" + str(plugid))) == 'appmenu' ):
                     appmenu_loaded = True
                     break
-            if process_running('appmenu-registrar') and not appmenu_loaded:
-                kill_process('appmenu-registrar')
+        except dbus.exceptions.DBusException:
+            logging.info('Failed to get xfce4-panel information over dbus.')
+    cmdline = process_get_cmdline( 'vala-panel' )
+    if not appmenu_loaded and cmdline:
+        profile = 'default'
+        try:
+            profile = cmdline[cmdline.index('-p') + 1]
         except:
-            logging.debug('running XFCE panel, but xfconf gi repository not available')
+            pass #if not specified, default profile is used
+        config = configparser.ConfigParser()
+        confdir = GLib.get_user_config_dir()
+        if os.path.isfile( confdir + '/vala-panel/' + profile ):
+            config.read( confdir + '/vala-panel/' + profile )
+            # List of the plugins in the loaded config (each item will be single-quoted
+            plugins = config.get('core-version-1', 'units').strip("][").split(', ')
 
-def rgba_to_hex(color):
-   """
-   Return hexadecimal string for :class:`Gdk.RGBA` `color`.
-   """
-   return "#{0:02x}{1:02x}{2:02x}".format(
-                                    int(color.red   * 255),
-                                    int(color.green * 255),
-                                    int(color.blue  * 255))
+            for p in plugins:
+                try:
+                    if config[p[1:-1]]['plugin-type'] == "'org.valapanel.appmenu'":
+                        appmenu_loaded = True
+                        break
+                except:
+                    pass
+    if not appmenu_loaded and process_running('budgie-panel'):
+        panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
+        applets = []
+        for p in panels:
+            applets.append( get_list('com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'applets') )
+        for a in applets:
+            name = get_string('com.solus-project.budgie-panel.applet', '/com/solus-project/budgie-panel/applets/{' + p + '}/', 'name')
+            if name == 'Global Menu':
+                appmenu_loaded = True
+                break
 
-def get_color(style_context, preferred_color, fallback_color):
-    color = rgba_to_hex(style_context.lookup_color(preferred_color)[1])
-    if color == '#000000':
-        color = rgba_to_hex(style_context.lookup_color(fallback_color)[1])
-    return color
+    if process_running('appmenu-registrar') and not appmenu_loaded:
+        kill_process('appmenu-registrar')
 
-def get_menu(menuKeys):
-    """
-    Generate menu of available menu items.
-    """
-    if not menuKeys:
-        return ''
+def get_running_panels():
+    panels = []
+    for p in [ 'xfce4-panel', 'mate-panel', 'budgie-panel', 'plank', 'dockx' 'vala-panel' ]:
+        if process_running(p):
+            panels.append(p)
+    return panels
 
-    menu_string, *menu_items = menuKeys
-    for menu_item in menu_items:
-        menu_string += '\n' + menu_item
+def thr_panel_updater():
+    while True:
+        time.sleep(60)
+        panels = get_running_panels()
+        if panels != STORE.panels:
+            logging.info("Running panels have changed, updating margin")
+            STORE.panels = panels
+            update_panel_margin()
 
-    # Get some colors from the currently selected theme.
+def get_panel_margin():
+    logging.info( 'Getting panel margin' )
+    margin = [ -1, -1 ]
+    location = STORE.location
+    if 'xfce4-panel' in STORE.panels:
+        pos_nm = { 'left': [ 5, 6, 8 ], 'top': [ 2, 6, 11 ], 'right': [ 1, 2, 4 ], 'bottom': [ 4, 8, 12 ] }
+        orientation = { 'horizontal': [ 0 ], 'vertical': [ 1, 2 ] }
+        bus = dbus.SessionBus()
+        try:
+            object = bus.get_object("org.xfce.Xfconf", "/org/xfce/Xfconf")
+            interface = dbus.Interface(object, dbus_interface="org.xfce.Xfconf")
+            panels = list(interface.GetProperty( 'xfce4-panel', '/panels' ))
+            for panel in panels:
+                _pos = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/position")  #.split(';=')
+                pos = re.split(r'[;=]', _pos )
+                # [ 'p', p, 'x', x, 'y', y ]
+                edge = int( pos[1] )
+
+                mode = 0 # Default panel mode, key doesn't always exist if default
+                if interface.PropertyExists('xfce4-panel', "/panels/panel-" + str(panel) + "/mode"):
+                    mode = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/mode")
+
+                ah = 0 # Default autohide value, key doesn't always exist if default
+                if interface.PropertyExists('xfce4-panel', "/panels/panel-" + str(panel) + "/autohide-behavior"):
+                    ah = interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/autohide-behavior")
+                is_panel = ( ah == 0 )
+                if is_panel and mode in orientation.get('vertical') and \
+                   ( ( edge in pos_nm.get('left') and 'west' in location ) or \
+                   ( edge in pos_nm.get('right') and 'east' in location ) ):
+                    x = int(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/size"))
+                    if x > margin[0]:
+                        margin[0] = x
+                if is_panel and mode in orientation.get('horizontal') and \
+                   ( ( edge in pos_nm.get('top') and 'north' in location ) or \
+                   ( edge in pos_nm.get('bottom') and 'south' in location ) ):
+                    y = int(interface.GetProperty('xfce4-panel', "/panels/panel-" + str(panel) + "/size"))
+                    if y > margin[1]:
+                        margin[1] = y
+        except dbus.exceptions.DBusException:
+            logging.info('Failed to get xfce4-panel information over dbus.')
+    if 'mate-panel' in STORE.panels:
+        panels = get_list( 'org.mate.panel', None, 'toplevel-id-list' )
+        for p in panels:
+            size = get_number( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'size' )
+            orientation = get_string( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/', 'orientation' )
+            if ( ( orientation == 'left' and 'west' in location ) or \
+               ( orientation == 'right' and 'east' in location ) ) and \
+               size > margin[0]:
+                margin[0] = size
+            if ( ( orientation == 'top' and 'north' in location ) or \
+               ( orientation == 'bottom' and 'south' in location ) ) and \
+               size > margin[1]:
+                margin[1] = size
+    if 'budgie-panel' in STORE.panels:
+        panels = get_list( 'com.solus-project.budgie-panel', None, 'panels' )
+        for p in panels:
+            size = get_number( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'size' )
+            orientation = get_string( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/', 'location' )
+            if ( ( orientation == 'left' and 'west' in location ) or \
+               ( orientation == 'right' and 'east' in location ) ) and \
+               size > margin[0]:
+                margin[0] = size
+            if ( ( orientation == 'top' and 'north' in location ) or \
+               ( orientation == 'bottom' and 'south' in location ) ) and \
+               size > margin[1]:
+                margin[1] = size
+    if 'plank' in STORE.panels:
+        cmdline = process_get_cmdline( 'plank' )
+        dock = 'dock1' # default
+        try:
+            idx = -1
+            if '--name' in cmdline:
+                idx = cmdline.index('--name')
+            elif '-n'  in cmdline:
+                idx = cmdline.index('-n')
+            if idx > 0:
+                dock = cmdline[idx + 1]
+        except:
+            pass
+        position = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'position')
+
+        size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
+        theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
+        config = configparser.ConfigParser()
+        cfg_file = pkgconfig.variables('plank').get('prefix') + 'plank/themes/' + theme + '/dock.theme'
+        if os.path.isfile( cfg_file ):
+            config.read( cfg_file )
+        pad = 0
+        try:
+            pad = float(config['PlankDockTheme']['BottomPadding'])
+        except:
+            pass
+        size = round( size * ( 1 + pad / 10 ) )
+
+        plank_is_panel = False
+        if get_string( 'net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'hide-mode') == 'none':
+            plank_is_panel = True
+        if plank_is_panel and size > margin[0] and \
+           ( ( position == 'left' and 'west' in location ) or \
+           ( position == 'right' and 'east' in location ) ):
+            margin[0] = size
+        if plank_is_panel and size > margin[1] and \
+           ( ( position == 'top' and 'north' in location ) or \
+           ( position == 'bottom' and 'south' in location ) ):
+            margin[1] = size
+    if 'dockx' in STORE.panels:
+        dockx_is_panel = False
+        if get_string( 'org.dockbarx.dockx', None, 'behaviour') == 'standard':
+            dockx_is_panel = True
+        position = get_string( 'org.dockbarx.dockx', None, 'position')
+        size = get_number( 'org.dockbarx.dockx', None, 'size' )
+        if dockx_is_panel and size > margin[0] and \
+           ( ( position == 'left' and 'west' in location ) or \
+           ( position == 'right' and 'east' in location ) ):
+            margin[0] = size
+        if dockx_is_panel and size > margin[1] and \
+           ( ( position == 'top' and 'north' in location ) or \
+           ( position == 'bottom' and 'south' in location ) ):
+            margin[1] = size
+    if 'vala-panel' in STORE.panels:
+        cmdline = process_get_cmdline( 'vala-panel' )
+        if cmdline:
+            profile = 'default'
+            try:
+                profile = cmdline[cmdline.index('-p') + 1]
+            except:
+                pass #if not specified, default profile is used
+
+            config = configparser.ConfigParser()
+            confdir = GLib.get_user_config_dir()
+            if os.path.isfile( confdir + '/vala-panel/' + profile ):
+                config.read( confdir + '/vala-panel/' + profile )
+                # List of the 'units' in the loaded config (toplevels, applets, other objects?)
+                # (each item will be single-quoted). We only care about the toplevels (panels) now
+                units = []
+                try:
+                    units = config.get('core-version-1', 'units').strip("][").split(', ')
+                except:
+                    pass
+                for u in units:
+                    try:
+                        if config[u[1:-1]]['object-type'] == "'toplevel'":
+                            size = int(config[u[1:-1]]['height'])
+                            # comes back as 'north-left', 'west-down', etc
+                            position = config[u[1:-1]]['panel-gravity'].strip("'").split('-')[0]
+                            # was auto-hide in one place and autohide in another?
+                            #ah = config[u[1:-1]]['auto-hide']
+                            if size > margin[0] and \
+                               ( ( position == 'west' and 'west' in location ) or \
+                               ( position == 'east' and 'east' in location ) ):
+                                margin[0] = size
+                            if size > margin[1] and \
+                               ( ( position == 'north' and 'north' in location ) or \
+                               ( position == 'south' and 'south' in location ) ):
+                                margin[1] = size
+                    except:
+                        pass
+
+    if margin[0] > 0 and margin[1] < 0:
+        margin[1] = 0
+    if margin[1] > 0 and margin[0] < 0:
+        margin[0] = 0
+    logging.info( 'New margin:' + str(margin) )
+    return margin
+
+def update_panel_margin():
+    STORE.margin = get_panel_margin()
+
+def update_theme_overrides_if_needed():
+    gtk_settings = Gtk.Settings.get_default()
+    STORE.gtk_theme = gtk_settings.get_property( 'gtk-theme-name' )
+    STORE.font_name = gtk_settings.get_property( 'gtk-font-name' )
+    if not STORE.rofi_theme_overrides or STORE.gtk_theme != STORE.last_gtk_theme or STORE.font_name != STORE.last_font_name:
+        STORE.rofi_theme_overrides = get_theme_overrides()
+        STORE.last_gtk_theme = STORE.gtk_theme
+        STORE.last_font_name = STORE.font_name
+
+def get_theme_overrides():
+    logging.info( 'Getting rofi theme overrides' )
+    # Get the currently active font.
+    theme_options = ''
+
+    font_name = Gtk.Settings.get_default().get_property( 'gtk-font-name' )
+    if font_name:
+        theme_options += ' * { font: "' + font_name + '"; } '
+
     window = Gtk.Window()
+    style_context = window.get_style_context()
 
-    # Allow closing the HUD with the same modifier key that opens it
-    shortcut = get_shortcut()
-    keyval, modifiers = Gtk.accelerator_parse(shortcut)
-    shortcut = '' if modifiers else ',' + shortcut
+    bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
+    fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
+    #borders = get_color(style_context, 'borders', 'border_color')
 
-    desktop_name = get_desktop_env()
+    logging.debug('bg_color: %s', str(bg_color))
+    logging.debug('fg_color: %s', str(fg_color))
+    #logging.debug('borders: %s', str(borders))
 
+    selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
+    selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
+    alpha = get_transparency() * 255 // 100
+    # Overwrite some of the theme options
+    theme_options += 'listview { background-color: ' + bg_color + f'{alpha:x}' + '; ' + \
+                     '           border-color: ' + selected_bg_color + '; } ' + \
+                     'element { text-color: ' + fg_color + '; } ' + \
+                     'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
+                     '                           text-color: ' + selected_fg_color + '; } ' + \
+                     'inputbar { background-color: ' + bg_color + '; ' + \
+                     '            border-color: ' + selected_bg_color + '; ' + \
+                     '            text-color: ' + fg_color + '; } '
+    return theme_options
+
+def get_display_dpi():
+    logging.info( 'Getting DPI' )
     # Calculate display DPI value
+    window = Gtk.Window()
     screen = window.get_screen()
     scale = window.get_scale_factor()
 
@@ -218,87 +451,96 @@ def get_menu(menuKeys):
        else:
           return 0
 
-    width_dpi = get_dpi(screen.width(), screen.width_mm())
-    height_dpi = get_dpi(screen.height(), screen.height_mm())
-    dpi = scale * (width_dpi + height_dpi) / 2
+    dpi = screen.get_resolution()
+    # https://docs.gtk.org/gdk3/method.Screen.get_resolution.html
+    # gdk_screen_get_resolution() returns -1 if no resolution is set
+    if dpi == -1:
+        width_dpi = get_dpi(screen.width(), screen.width_mm())
+        height_dpi = get_dpi(screen.height(), screen.height_mm())
+        dpi = (width_dpi + height_dpi) / 2
+    return round( dpi * scale )
 
-    rofi_theme = get_rofi_theme()
-    mate_hud_themes = [ 'mate-hud', 'mate-hud-hidpi', 'mate-hud-rounded', 'mate-hud-rounded-hidpi' ]
-    themes_hidpi_versions = { 'mate-hud': 'mate-hud-hidpi', 'mate-hud-rounded': 'mate-hud-rounded-hidpi' }
-    # switch to the hidpi version of the theme if needed.
-    if rofi_theme in mate_hud_themes:
-        if scale > 1 and rofi_theme in themes_hidpi_versions.keys():
-            rofi_theme = themes_hidpi_versions[rofi_theme]
+def init_rofi():
+    STORE.recently_used_current_window = []
+    if STORE.current_win_name in STORE.recently_used.keys():
+        STORE.recently_used_current_window = STORE.recently_used.get(STORE.current_win_name)
+
+    # update each time in case interface direction has changed (unlikely, but shouldn't cost use much
+    STORE.menu_separator = get_menu_separator(pair=STORE.menu_separator_pair)
+
+    # Allow closing the HUD with the same modifier key that opens it
+    shortcut = get_shortcut()
+    keyval, modifiers = Gtk.accelerator_parse(shortcut)
+    shortcut = '' if modifiers else ',' + shortcut
+    prompt = STORE.prompt or HUD_DEFAULTS.PROMPT
+
     cmd = ['rofi', '-dmenu', '-i',
-           '-p', 'HUD',
+           '-p', prompt,
            '-lines', '10',
-           '-dpi', str(round(dpi)),
+           '-dpi', str(STORE.dpi),
            '-separator-style', 'none',
            '-hide-scrollbar',
            '-click-to-exit',
-           '-levenshtein-sort',
            '-line-padding', '2',
            '-kb-cancel', 'Escape' + shortcut,
-           '-sync', # withhold display until menu entries are ready
-           '-monitor', '-2', # show in the current application
-           '-theme', rofi_theme,
-           '-theme-str', 'window { location: north west; ' + \
-                         '         anchor: north west; }' ] # Override the window location to the top left of the current window
+           '-monitor', monitor_rofi_argument(STORE.monitor), # show in the current application or current window
+           '-theme', STORE.rofi_theme,
+           '-theme-str', 'window { location: ' + STORE.location + '; ' + \
+                         '         anchor: ' + STORE.location + '; }' ] # Override the window location
+    if STORE.monitor == 'monitor':
+        margin = STORE.margin
+        if margin[0] >= 0 or margin[1] >= 0:
+            cmd += [ '-theme-str', 'window { margin: ' + str(margin[1]) + 'px ' + str(margin[0]) + 'px; } ' ]
 
     # If we use the default adaptive theme, we need to pull in some
     # color information from the GTK theme
-    if rofi_theme in mate_hud_themes:
-        # Get the currently active font.
-        font_name = ''
-        if 'MATE' in desktop_name:
-            font_name = get_string('org.mate.interface', None, 'font-name')
-        elif 'XFCE' in desktop_name:
-            try:
-                font_name = Xfconf.Channel.new_with_property_base("xsettings", "/Gtk").get_string("/FontName", "")
-            except:
-                logging.debug('running XFCE, but xfconf gi repository not available')
-        elif 'X-Cinnamon' in desktop_name:
-            font_name = get_string('org.cinnamon.desktop.interface', None, 'font-name')
-        elif 'Budgie:GNOME' in desktop_name:
-            font_name = get_string('org.gnome.desktop.interface', None, 'font-name')
-        if font_name:
-            cmd += [ '-theme-str', '* { font: "' + font_name + '"; } ' ]
+    if STORE.rofi_theme in STORE.mate_hud_themes:
+        update_theme_overrides_if_needed()
+        cmd += [ '-theme-str', STORE.rofi_theme_overrides ]
+    if STORE.custom_width != HUD_DEFAULTS.CUSTOM_WIDTH:
+        cmd += [ '-theme-str', ' window { width: ' + STORE.custom_width + STORE.custom_width_units + '; } ' ]
 
-        window = Gtk.Window()
-        style_context = window.get_style_context()
+    STORE.rofi_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    if STORE.recently_used_current_window:
+        STORE.rofi_process.stdin.write(('Recently Used   ' + HUD_DEFAULTS.RECENTLY_USED_DECORATION + '\n  ' + '\n  '.join(STORE.recently_used_current_window).replace('>',STORE.menu_separator) + '\n' + HUD_DEFAULTS.RECENTLY_USED_DECORATION + '\n').encode('utf-8'))
+        STORE.rofi_process.stdin.flush()
 
-        bg_color = get_color(style_context, 'dark_bg_color', 'theme_bg_color')
-        fg_color = get_color(style_context, 'dark_fg_color', 'theme_fg_color')
-        #borders = get_color(style_context, 'borders', 'border_color')
+def write_menuitem(menu_item):
+    menu_string = menu_item + '\n'
 
-        logging.debug('bg_color: %s', str(bg_color))
-        logging.debug('fg_color: %s', str(fg_color))
-        #logging.debug('borders: %s', str(borders))
+    if STORE.recently_used_current_window and menu_item in STORE.recently_used_current_window: return
+    try:
+        STORE.rofi_process.stdin.write(('  ' + menu_string).encode('utf-8'))
+        STORE.rofi_process.stdin.flush()
+    except BrokenPipeError:
+        # Rofi process terminated either we selected an option, or used the
+        # shortcut to close before everything was piped to rofi
+        pass
 
-        selected_bg_color = rgba_to_hex(style_context.lookup_color('theme_selected_bg_color')[1])
-        selected_fg_color = rgba_to_hex(style_context.lookup_color('theme_selected_fg_color')[1])
-        #error_bg_color = rgba_to_hex(style_context.lookup_color('error_bg_color')[1])
-        #error_fg_color = rgba_to_hex(style_context.lookup_color('error_fg_color')[1])
-        #info_bg_color = rgba_to_hex(style_context.lookup_color('info_bg_color')[1])
-        #info_fg_color = rgba_to_hex(style_context.lookup_color('info_fg_color')[1])
-        #text_color = rgba_to_hex(style_context.lookup_color('theme_text_color')[1])
+def get_menu():
+    """
+    Generate menu of available menu items.
+    """
+    if not STORE.rofi_process and STORE.rofi_process.poll() is not None:
+        logging.debug("get_menu() rofi_process was terminated before asking for menu_result")
+        return ''
 
-        # Overwrite some of the theme options
-        theme_options = 'listview { background-color: ' + bg_color + '; ' + \
-                        '           border-color: ' + selected_bg_color + '; } ' + \
-                        'element { text-color: ' + fg_color + '; } ' + \
-                        'element selected.normal { background-color: ' + selected_bg_color + '; ' + \
-                        '                           text-color: ' + selected_fg_color + '; } ' + \
-                        'inputbar { background-color: ' + bg_color + '; ' + \
-                        '            border-color: ' + selected_bg_color + '; ' + \
-                        '            text-color: ' + fg_color + '; } '
-        cmd += [ '-theme-str', theme_options ]
+    menu_result = STORE.rofi_process.communicate()[0].decode('utf8').strip()
+    STORE.rofi_process.stdin.close()
+    STORE.rofi_process = None
+    STORE.recently_used_current_window = None
 
-    menu_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    menu_cmd.stdin.write(menu_string.encode('utf-8'))
-    menu_result = menu_cmd.communicate()[0].decode('utf8').rstrip()
-    menu_cmd.stdin.close()
-
+    # Add the menu result to the list of recently used commands for the application
+    if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_NONE and menu_result and not HUD_DEFAULTS.RECENTLY_USED_DECORATION in menu_result:
+        result_fmt = menu_result.replace(STORE.menu_separator, '>').lstrip()
+        if STORE.current_win_name not in STORE.recently_used.keys():
+            STORE.recently_used.update({ STORE.current_win_name: [] })
+        if result_fmt in STORE.recently_used.get(STORE.current_win_name):
+            STORE.recently_used.get(STORE.current_win_name).remove(result_fmt) # we're moving it to the front
+        STORE.recently_used.get(STORE.current_win_name).insert(0, result_fmt)
+        if STORE.recently_used_max != HUD_DEFAULTS.RECENTLY_USED_UNLIMITED:
+            STORE.recently_used[STORE.current_win_name] = STORE.recently_used.get(STORE.current_win_name)[:STORE.recently_used_max]
+        Gio.Settings.new('org.mate.hud').set_string('recently-used', json.dumps(STORE.recently_used))
     return menu_result
 
 """
@@ -312,7 +554,7 @@ def try_appmenu_interface(window_id):
         appmenu_registrar_object = session_bus.get_object('com.canonical.AppMenu.Registrar', '/com/canonical/AppMenu/Registrar')
         appmenu_registrar_object_iface = dbus.Interface(appmenu_registrar_object, 'com.canonical.AppMenu.Registrar')
     except dbus.exceptions.DBusException:
-        logging.info('Unable to register with com.canonical.AppMenu.Registrar.')
+        logging.debug('Unable to register with com.canonical.AppMenu.Registrar.')
         return False
 
     # --- Get dbusmenu object path
@@ -321,7 +563,7 @@ def try_appmenu_interface(window_id):
         if not registrar_running:
             terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
-        logging.info('Unable to get dbusmenu object path.')
+        logging.debug('Unable to get dbusmenu object path.')
         return False
 
     # --- Access dbusmenu items
@@ -329,8 +571,11 @@ def try_appmenu_interface(window_id):
         dbusmenu_object = session_bus.get_object(dbusmenu_bus, dbusmenu_object_path)
         dbusmenu_object_iface = dbus.Interface(dbusmenu_object, 'com.canonical.dbusmenu')
     except ValueError:
-        logging.info('Unable to access dbusmenu items.')
+        logging.debug('Unable to access dbusmenu items.')
         return False
+
+    # --- Valid menu, so init rofi process to capture keypresses.
+    init_rofi()
 
     dbusmenu_root_item = dbusmenu_object_iface.GetLayout(0, 0, ["label", "children-display"])
     dbusmenu_item_dict = dict()
@@ -361,16 +606,16 @@ def try_appmenu_interface(window_id):
 
         if len(item_children) == 0:
             if new_path not in blacklist:
-                dbusmenu_item_dict[format_path(new_path)] = item_id
+                menu_item = format_path(new_path)
+                dbusmenu_item_dict[menu_item] = item_id
+                write_menuitem(menu_item)
         else:
             blacklist.append(new_path)
             for child in item_children:
                 expanse_all_menu_with_dbus(child, False, new_path)
 
     expanse_all_menu_with_dbus(dbusmenu_root_item[1], True, "")
-    menuKeys = sorted(dbusmenu_item_dict.keys())
-
-    menu_result = get_menu(menuKeys)
+    menu_result = get_menu()
 
     # --- Use dmenu result
     if menu_result in dbusmenu_item_dict:
@@ -403,7 +648,7 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
             terminate_appmenu_registrar()
     except dbus.exceptions.DBusException:
         logging.info('Unable to connect with com.gtk.Menus.')
-        return
+        return False
 
     # Here's the deal: The idea is to reduce the number of calls to the proxy and keep it as low as possible
     # because the proxy is a potential bottleneck
@@ -423,10 +668,13 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
     # --- Construct menu list ---
 
     potential_new_layers = []
-    def queue(potLayer, label, path):
+    def queue(potLayer, label, path, idx = None):
         # collects potentially new layers to check them against usedLayers
         # potLayer: ID of potential layer, label: None if nondescript, path
-        potential_new_layers.append([potLayer, label, path])
+        if idx == None:
+            potential_new_layers.append([potLayer, label, path])
+        else:
+            potential_new_layers.insert(idx, [potLayer, label, path])
 
     def explore(parent, path):
         for node in parent:
@@ -443,7 +691,8 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         # There theoretically could be a section that is also a submenu, so we have to handel this via queue
                         # submenus are more important than sections
                         if ':submenu' in element:
-                            queue(element[':submenu'][0], None, path + " > " + element['label'])
+                            idx = 0 if node[0] == 0 else None
+                            queue(element[':submenu'][0], None, path + " > " + element['label'], idx)
                             # We ignore whether or not a submenu points to a specific index, shouldn't matter because of the way the menu got exportet
                             # Worst that can happen are some duplicates
                             # Also we don't Start() directly which could mean we get nothing under this label but this shouldn't really happen because there shouldn't be two submenus
@@ -460,6 +709,10 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                         menu_action = str(element['action']).split(".",1)[1]
                         action_path = format_path(path + " > " + element['label'])
                         gtk_menubar_action_dict[action_path] = menu_action
+                        # If rofi isn't running already this is when we know we have a menu finally, so start it up
+                        if not STORE.rofi_process:
+                            init_rofi()
+                        write_menuitem(action_path)
                         if 'target' in element:
                             gtk_menubar_action_target_dict[action_path] = element['target']
                 else:
@@ -484,8 +737,10 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
 
     gtk_menu_menus_iface.End(usedLayers)
 
-    menuKeys = sorted(gtk_menubar_action_dict.keys())
-    menu_result = get_menu(menuKeys)
+    menuKeys = gtk_menubar_action_dict.keys()
+    if len(menuKeys) == 0:
+        return False
+    menu_result = get_menu()
 
     # --- Use menu result
     if menu_result in gtk_menubar_action_dict:
@@ -508,6 +763,76 @@ def try_gtk_interface(gtk_bus_name, gtk_menu_object_path, gtk_actions_paths_list
                 action_iface.Activate(action, target, not_use_platform_data)
             except Exception as e:
                 logging.debug('action_path: %s', str(action_path))
+    return True
+
+# DbusPlotinusMenuItem and DbusPlotinusMenu classes taken and slightly
+# modified from gnome-hud https://github.com/hardpixel/gnome-hud
+class DbusPlotinusMenuItem(object):
+
+    def __init__(self, item):
+        self.path     = list(item['Path'])[1:]
+        self.action   = int(item['Id'])
+        self.accel    = list(item['Accelerators'])
+        self.label    = item['Label']
+        self.text     = format_path('>' + '>'.join(self.path + [self.label]))
+
+class DbusPlotinusMenu(object):
+
+    def __init__(self, session, window_object_path):
+        self.actions     = {}
+        self.session     = session
+        self.win_path    = window_object_path
+        self.interface = self.get_interface()
+
+    def activate(self, selection):
+        self.actions[selection].Execute()
+
+    def get_interface(self):
+        bus_name = STORE.plotinus_bus_name
+        bus_path = STORE.plotinus_bus_path
+
+        try:
+            object = self.session.get_object(bus_name, bus_path)
+            interface = dbus.Interface(object, dbus_interface=bus_name)
+            return interface
+        except dbus.exceptions.DBusException:
+            logging.info('Unable to get plotinus D-Bus interface')
+            return None
+
+    def get_results(self):
+        self.actions = {}
+
+        if self.interface and self.win_path:
+            name, paths = self.interface.GetCommands(self.win_path)
+            commands        = [self.session.get_object(name, path) for path in paths]
+
+            if commands:
+                init_rofi()
+            else:
+                return False
+
+            for command in commands:
+                self.collect_entries(command)
+            return True
+
+    def collect_entries(self, command):
+        interface    = dbus.Interface(command, dbus_interface='org.freedesktop.DBus.Properties')
+        command        = dbus.Interface(command, dbus_interface=(STORE.plotinus_bus_name + '.Command'))
+        properties = interface.GetAll(STORE.plotinus_bus_name + '.Command')
+        menu_item    = DbusPlotinusMenuItem(properties)
+
+        self.actions[menu_item.text] = command
+        write_menuitem(menu_item.text)
+
+def try_plotinus_interface(gtk_win_object_path):
+    plotinus = DbusPlotinusMenu(dbus.SessionBus(), gtk_win_object_path)
+    plotinus_success = plotinus.get_results()
+    if not plotinus_success:
+        return False
+    menu_result = get_menu()
+    if menu_result:
+        plotinus.activate(menu_result)
+    return True
 
 def hud(widget, keystr, user_data):
     logging.debug("Handling %s", str(user_data))
@@ -519,6 +844,10 @@ def hud(widget, keystr, user_data):
         logging.debug('ewmh.getActiveWindow returned None, giving up')
         return
     window_id = hex(ewmh._getProperty('_NET_ACTIVE_WINDOW')[0])
+    win_name = ewmh._getProperty('WM_CLASS', win)
+    # comes back in the format b'name\x00Name\x00' and we just want to keep name (\x00 is Null character)
+    win_name = bytes(bytearray(win_name)[:bytearray(win_name).index(0)]).decode('utf-8')
+    STORE.current_win_name = win_name
     gtk_bus_name = ewmh._getProperty('_GTK_UNIQUE_BUS_NAME', win)
     gtk_menubar_object_path = ewmh._getProperty('_GTK_MENUBAR_OBJECT_PATH', win)
     gtk_app_object_path = ewmh._getProperty('_GTK_APPLICATION_OBJECT_PATH', win)
@@ -529,7 +858,8 @@ def hud(widget, keystr, user_data):
         [i.decode('utf8') if isinstance(i, bytes) \
         else i for i in [gtk_bus_name, gtk_menubar_object_path, gtk_app_object_path, gtk_win_object_path, gtk_unity_object_path]]
 
-    logging.debug('Window id is : %s', window_id)
+    logging.debug('Window id: %s', window_id)
+    logging.debug('Window name: %s', win_name)
     logging.debug('_GTK_UNIQUE_BUS_NAME: %s', gtk_bus_name)
     logging.debug('_GTK_MENUBAR_OBJECT_PATH: %s', gtk_menubar_object_path)
     logging.debug('_GTK_APPLICATION_OBJECT_PATH: %s', gtk_app_object_path)
@@ -541,8 +871,10 @@ def hud(widget, keystr, user_data):
     appmenu_success = try_appmenu_interface(int(window_id, 16))
     if not registrar_running:
         terminate_appmenu_registrar()
-
-    if not appmenu_success and gtk_menubar_object_path:
+    if appmenu_success:
+        return
+    gtkmenubar_success = False
+    if gtk_menubar_object_path:
         logging.debug('Appmenu found nothing.')
         # Many apps do not respect menu action groups, such as
         # LibreOffice and gnome-mpv, so we have to include all action
@@ -553,9 +885,23 @@ def hud(widget, keystr, user_data):
                                    gtk_menubar_object_path,
                                    gtk_app_object_path,
                                    gtk_unity_object_path]))
-        try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
+        gtkmenubar_success = try_gtk_interface(gtk_bus_name, gtk_menubar_object_path, gtk_actions_paths_list)
     else:
-        logging.debug('_GTK_MENUBAR_OBJECT_PATH in None, giving up.')
+        logging.debug('_GTK_MENUBAR_OBJECT_PATH in None. Unable to use the menubar interface.')
+    if gtkmenubar_success:
+        return
+    else:
+        logging.debug('GTK menubar found nothing.')
+    if STORE.plotinus_enabled:
+        logging.debug('Trying Plotinus interface')
+        if gtk_win_object_path:
+            success = try_plotinus_interface(gtk_win_object_path)
+            if not success:
+                logging.debug('Plotinus found nothing. Giving up.')
+        else:
+            logging.debug('_GTK_WINDOW_OBJECT_PATH in None. Unable to use plotinus interface')
+    else:
+        logging.debug('Plotinus is not enabled')
 
 class GlobalKeyBinding(GObject.GObject, threading.Thread):
     __gsignals__ = {
@@ -570,7 +916,7 @@ class GlobalKeyBinding(GObject.GObject, threading.Thread):
         self.display = display.Display()
         self.screen = self.display.screen()
         self.window = self.screen.root
-        self.keymap = Gdk.Keymap().get_default()
+        self.keymap = Gdk.Keymap().get_for_display(Gdk.Display().get_default())
         self.keycodes = self.get_keycodes()
         self.ignored_masks = self.get_mask_combinations(X.LockMask | X.Mod2Mask | X.Mod5Mask)
         self.map_modifiers()
@@ -759,14 +1105,6 @@ def get_shortcut():
         logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % shortcut)
     return shortcut
 
-def get_rofi_theme():
-    rofi_theme = 'docu'
-    try:
-        rofi_theme = get_string('org.mate.hud', None, 'rofi-theme')
-    except:
-        logging.error('org.mate.hud gsettings not found. Defaulting to %s.' % rofi_theme)
-    return rofi_theme
-
 def remove_autostart(filename):
     config_dir = GLib.get_user_config_dir()
     autostart_file = os.path.join(config_dir, 'autostart', filename)
@@ -775,7 +1113,7 @@ def remove_autostart(filename):
 
 if __name__ == "__main__":
     setproctitle.setproctitle('mate-hud')
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # Remove old-style autostart .desktop file for mate-hud
     remove_autostart('mate-hud.desktop')
@@ -787,6 +1125,212 @@ if __name__ == "__main__":
     def change_tap_timeout(schema, key):
         tap_timeout = settings.get_int("tap-timeout")
         keybinder.tap_timeout = tap_timeout;
+
+    def change_rofi_theme(schema, key):
+        default_theme = HUD_DEFAULTS.THEME
+        rofi_theme = settings.get_string("rofi-theme")
+
+        themes = get_theme_list()
+        if not rofi_theme in themes:
+            logging.info( '%s not found as a valid rofi theme, defaulting to %s' % ( rofi_theme, default_theme ) )
+            settings.set_string('rofi-theme', default_theme )
+            return
+
+        if rofi_theme in STORE.mate_hud_themes:
+            if Gtk.Window().get_scale_factor() > 1 and rofi_theme in STORE.themes_hidpi_versions.keys():
+                rofi_theme = STORE.themes_hidpi_versions[rofi_theme]
+        STORE.rofi_theme = rofi_theme
+        if STORE.rofi_theme in STORE.mate_hud_themes:
+            update_theme_overrides_if_needed()
+
+    def change_monitor(schema, key):
+        STORE.monitor = get_monitor()
+        change_location(None, None)
+
+    def change_location(schema, key):
+        location = get_location()
+        if location == 'default':
+            location = HUD_DEFAULTS.LOCATION if not isrtl() else HUD_DEFAULTS.LOCATION_RTL
+            logging.info( "Using default location: %s" % location )
+        else:
+            logging.info( "Updated location to: %s" % location )
+        STORE.location = location
+        change_panel_margin(None, None)
+
+    def change_panel_margin(schema, key):
+        if STORE.location == 'center':
+            logging.info( 'Updating panel margin to 0 for HUD in the center' )
+            STORE.margin = [ 0, 0 ]
+        elif STORE.monitor == 'window':
+            STORE.margin = [ -1, -1 ]
+        else:
+            STORE.margin = get_panel_margin()
+
+    def change_custom_width(schema, key):
+        try:
+            STORE.use_custom_width, STORE.custom_width, STORE.custom_width_units = get_custom_width()
+        except:
+            logging.error( "Invalid custom width specified. Resetting to default." )
+            settings.set_string('custom-width', HUD_DEFAULTS.CUSTOM_WIDTH)
+            return # since we changed the setting, it will call this function again
+        if STORE.use_custom_width:
+            logging.info('Using custom width ' + STORE.custom_width + STORE.custom_width_units)
+        else:
+            logging.info('Using width specified by theme.')
+
+    def change_menu_separator_pair(schema, key):
+        STORE.menu_separator_pair = get_menu_separator_pair()
+        logging.info('Menu separator pair set as %s' % STORE.menu_separator_pair)
+        STORE.menu_separator = get_menu_separator(pair=STORE.menu_separator_pair)
+
+    def change_recently_used_max(schema, key):
+        STORE.recently_used_max = get_number('org.mate.hud', None, 'recently-used-max')
+        logging.info( 'Updated recently used max number entries to %d' % STORE.recently_used_max )
+        if STORE.recently_used_max > 0:
+            for key in STORE.recently_used.keys():
+                STORE.recently_used[key] = STORE.recently_used.get(key)[:STORE.recently_used_max]
+            settings.set_string('recently-used', json.dumps(STORE.recently_used))
+        elif STORE.recently_used_max == 0:
+            settings.set_string('recently-used', '{}') # 0 means don't save recently used, so clear it out.
+
+    def change_recently_used(schema, key):
+        recently_used = get_string('org.mate.hud', None, 'recently-used')
+        try:
+            STORE.recently_used = json.loads(recently_used)
+        except:
+            logging.info( 'Reset recently used list to empty.' )
+            settings.set_string('recently-used', '{}')
+
+    def change_prompt(schema, key):
+        STORE.prompt = get_string( 'org.mate.hud', None, 'prompt' )
+
+    def start_plotinus():
+        # Enable plotinus D-bus service in gsettings
+        ss = Gio.SettingsSchemaSource.get_default()
+        schema = ss.lookup('com.worldwidemann.plotinus', True)
+        if schema:
+            STORE.plotinus_schema = 'com.worldwidemann.plotinus'
+            STORE.plotinus_path = '/com/worldwidemann/plotinus/'
+            STORE.plotinus_bus_name = 'com.worldwidemann.plotinus'
+            STORE.plotinus_bus_path = '/com/worldwidemann/plotinus'
+        else:
+            schema = ss.lookup('org.unityx.plotinus', True)
+            if schema:
+                STORE.plotinus_schema = 'org.unityx.plotinus'
+                STORE.plotinus_path = '/org/unityx/plotinus/'
+                STORE.plotinus_bus_name = 'org.unityx.plotinus'
+                STORE.plotinus_bus_path = '/com/worldwidemann/plotinus'
+        if schema:
+            # The last tagged release of plotinus 0.2.0 doesn't include the dbus service
+            # so we need to make sure this key exists that we're using a compatible version
+            if schema.has_key('dbus-enabled'):
+                plotinus_settings = Gio.Settings.new_with_path(STORE.plotinus_schema, STORE.plotinus_path + 'default/')
+                plotinus_settings.set_boolean('dbus-enabled', True)
+            else:
+                logging.info('Unable to enable plotinus D-bus service')
+                return
+        else:
+            logging.info('Plotinus schema not installed')
+            return
+        # Start the D-bus service executable
+        if not process_running('plotinus'):
+            try:
+                subprocess.Popen(['plotinus'])
+                logging.info('Launching plotinus D-Bus service')
+            except:
+                logging.info('Unable to launch plotinus D-Bus executable')
+                return
+        else:
+            logging.info('plotinus D-Bus service is already running')
+        STORE.plotinus_enabled = True
+
+    def xfce_panel_change_handler(channel, prop, value):
+        watched_props = [ 'autohide-behavior', 'mode', 'position', 'size', 'panels' ]
+        prop = prop.split('/')[-1]
+        if channel == 'xfce4-panel' and prop.split('/')[-1] in watched_props:
+            # If we got a new panel or removed one, update our listeners
+            if prop in 'panels':
+                setup_panel_change_handlers()
+            panel_change_handler(None, None)
+
+    def panel_new_or_removed_handler(schema, key):
+        panel_listeners = setup_panel_change_handlers()
+        panel_change_handler(None, None)
+
+    def panel_change_handler(schema, key):
+        if schema and key:
+            logging.debug('Called panel_change_handler. schema: ' + \
+                          schema.get_property('schema-id') + \
+                          ', path: ' + schema.get_property('path') + \
+                          ', key: ' + key )
+        else:
+            logging.debug('Called panel_change_handler manually.')
+        update_panel_margin()
+
+    def vala_panel_change_handler(e):
+        update_panel_margin()
+
+    def setup_panel_change_handlers():
+        #xfce4-panel
+        bus = dbus.SessionBus()
+        try:
+            object = bus.get_object("org.xfce.Xfconf","/org/xfce/Xfconf")
+            # Listens to every change on xfconf, so we'll have to filter out what we care about
+            object.connect_to_signal("PropertyChanged", xfce_panel_change_handler, dbus_interface="org.xfce.Xfconf")
+        except dbus.DBusException:
+            logging.debug( 'Unable to set D-Bus listener for xfce panel changes.' )
+
+        ss = Gio.SettingsSchemaSource.get_default()
+        settings_objects = []
+        #mate-panel
+        if ss.lookup('org.mate.panel', True):
+            settings_objects.append(Gio.Settings.new('org.mate.panel'))
+            settings_objects[-1].connect("changed::toplevel-id-list", panel_new_or_removed_handler)
+            panels = get_list("org.mate.panel", None, 'toplevel-id-list')
+            for p in panels:
+                settings_objects.append(Gio.Settings.new_with_path( 'org.mate.panel.toplevel', '/org/mate/panel/toplevels/' + p + '/' ))
+                settings_objects[-1].connect("changed::size", panel_change_handler)
+                settings_objects[-1].connect("changed::orientation", panel_change_handler)
+        else:
+            logging.debug( 'mate-panel schema not found' )
+
+        #budgie-panel
+        if ss.lookup('com.solus-project.budgie-panel', True):
+            settings_objects.append(Gio.Settings.new('com.solus-project.budgie-panel'))
+            settings_objects[-1].connect("changed::panels", panel_new_or_removed_handler)
+            panels = get_list('com.solus-project.budgie-panel', None, 'panels')
+            for p in panels:
+                settings_objects.append(Gio.Settings.new_with_path( 'com.solus-project.budgie-panel.panel', '/com/solus-project/budgie-panel/panels/{' + p + '}/' ))
+                settings_objects[-1].connect("changed::size", panel_change_handler)
+                settings_objects[-1].connect("changed::location", panel_change_handler)
+        else:
+            logging.debug( 'budgie panel schema not found' )
+
+        #plank
+        if ss.lookup('net.launchpad.plank', True):
+            settings_objects.append(Gio.Settings.new('net.launchpad.plank'))
+            settings_objects[-1].connect("changed::enabled-docks", panel_new_or_removed_handler)
+            docks = get_list('net.launchpad.plank', None, 'enabled-docks' )
+            for dock in docks:
+                settings_objects.append(Gio.Settings.new_with_path('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/'))
+                settings_objects[-1].connect("changed::position", panel_change_handler)
+                settings_objects[-1].connect("changed::icon-size", panel_change_handler)
+                settings_objects[-1].connect("changed::theme", panel_change_handler)
+                settings_objects[-1].connect("changed::hide-mode", panel_change_handler)
+        else:
+            logging.debug( 'plank schema not found' )
+
+        #dockx
+        if ss.lookup('org.dockbarx.dockx', True):
+            settings_objects.append(Gio.Settings.new('org.dockbarx.dockx'))
+            settings_objects[-1].connect("changed::position", panel_change_handler)
+            settings_objects[-1].connect("changed::behavior", panel_change_handler)
+            settings_objects[-1].connect("changed::size", panel_change_handler)
+        else:
+            logging.debug( 'dockx schema not found' )
+
+        return settings_objects
+
 
     enabled = False
     enabled = get_bool('org.mate.hud', None, 'enabled')
@@ -804,10 +1348,54 @@ if __name__ == "__main__":
         settings = Gio.Settings.new("org.mate.hud")
         settings.connect("changed::shortcut", change_shortcut)
         settings.connect("changed::tap-timeout", change_tap_timeout)
+        settings.connect("changed::rofi-theme", change_rofi_theme)
+        settings.connect("changed::hud-monitor", change_monitor)
+        settings.connect("changed::location", change_location)
+        settings.connect("changed::custom-width", change_custom_width)
+        settings.connect("changed::menu-separator", change_menu_separator_pair)
+        settings.connect("changed::recently-used-max", change_recently_used_max)
+        settings.connect("changed::recently-used", change_recently_used)
+        settings.connect("changed::prompt", change_prompt)
+
+        # watches what panels are running
+        STORE.panels = get_running_panels()
+        panel_updater_thread = threading.Thread(target=thr_panel_updater, daemon=True).start()
+
+        # If we don't preserve the gsettings objects in this context,
+        # the listeners don't work
+        panel_listeners = setup_panel_change_handlers()
+
+        vala_panel_config_dir = GLib.get_user_config_dir() + '/vala-panel/'
+        watch = True
+        if not os.path.isdir(vala_panel_config_dir):
+            try: os.mkdir(vala_panel_config_dir)
+            except: watch = False
+        if watch:
+            wm = pyinotify.WatchManager()
+            notifier = pyinotify.ThreadedNotifier(wm, default_proc_fun=vala_panel_change_handler)
+            notifier.start()
+            wm.add_watch(GLib.get_user_config_dir() + '/vala-panel/', pyinotify.IN_MODIFY, rec=True, auto_add=True)
+        else:
+            notifier = None
+
+        # Do some initial setup, so we don't have to do it when the HUD is called
+        change_rofi_theme(None, None)
+        change_monitor(None, None) # This calls change_location too
+        STORE.dpi = get_display_dpi()
+        change_custom_width(None, None)
+        change_menu_separator_pair(None, None)
+        change_recently_used(None, None)
+        change_recently_used_max(None, None)
+        change_prompt(None, None)
+        start_plotinus()
 
         try:
             GLib.MainLoop().run()
         except KeyboardInterrupt:
+            if notifier:
+                notifier.stop()
+            terminate_appmenu_registrar()
+            kill_process('plotinus')
             GLib.MainLoop().quit()
     else:
         logging.info("The HUD is disabled via org.mate.hud in gsettings.")

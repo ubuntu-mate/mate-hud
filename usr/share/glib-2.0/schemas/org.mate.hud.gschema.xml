@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
+  <enum id="org.mate.hud.monitor">
+    <value value="0" nick="window"/>
+    <value value="1" nick="monitor"/>
+  </enum>
+  <enum id="org.mate.hud.location">
+    <value value="0" nick="default"/>
+    <value value="1" nick="north west"/>
+    <value value="2" nick="north"/>
+    <value value="3" nick="north east"/>
+    <value value="4" nick="east"/>
+    <value value="5" nick="south east"/>
+    <value value="6" nick="south"/>
+    <value value="7" nick="south west"/>
+    <value value="8" nick="west"/>
+    <value value="9" nick="center"/>
+  </enum>
+  <enum id="org.mate.hud.separator-pairs">
+    <value value="0" nick="◂   ▸"/>
+    <value value="1" nick="←   ➔"/>
+    <value value="2" nick="←   ➜"/>
+    <value value="3" nick="⮜   ⮞"/>
+    <value value="4" nick="❮   ❯"/>
+    <value value="5" nick="«   »"/>
+    <value value="6" nick="‹   ›"/>
+  </enum>
   <schema id="org.mate.hud" path="/org/mate/hud/">
     <key type="b" name="enabled">
       <default>true</default>
@@ -23,12 +48,91 @@
         Find available themes in /usr/share/rofi/themes or put your own in ~/.local/share/rofi/themes
       </description>
     </key>
+    <key name="hud-monitor" enum="org.mate.hud.monitor">
+      <default>'window'</default>
+      <summary>Whether to pin the HUD to the monitor or to the current window</summary>
+      <description>
+        Whether to pin the HUD to the monitor or to the current window
+      </description>
+    </key>
+    <key name="location" enum="org.mate.hud.location">
+      <default>"default"</default>
+      <summary>Where to position the HUD on the window (or monitor)</summary>
+      <description>
+        Where to position the HUD on the window (or monitor)
+      </description>
+    </key>
+    <key name="prompt" type="s">
+      <default>''</default>
+      <summary>The prompt to use for the HUD</summary>
+      <description>
+		Prompt to use for the HUD
+		Default: '' -> displayed as HUD localized if available
+      </description>
+    </key>
+    <key type="s" name="custom-width">
+      <default>'0'</default>
+      <summary>A custom width for the HUD (or 0 for default)</summary>
+      <description>
+        Custom width for the HUD.
+
+        0: Use theme defined width
+
+        'NUM' or 'NUM px': NUM screen pixels
+
+        'NUM em': Relative to text height.
+
+        'NUM ch': Relative to width of a single number.
+
+        'NUM %': Num percent of the monitor* width
+
+        * monitor to rofi means whatever it is attached to (window or monitor)
+      </description>
+    </key>
+    <key name="menu-separator" enum="org.mate.hud.separator-pairs">
+      <default>"◂   ▸"</default>
+      <summary>Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)</summary>
+      <description>
+        Character to separate the parts of the menu heirarchy in the HUD (RTL and LTR variants)
+      </description>
+    </key>
+    <key type="s" name="recently-used">
+      <default>"{}"</default>
+      <summary>JSON dictionary of recently selected menu items per application</summary>
+      <description>
+        JSON dictionary of recently selected menu items per application
+      </description>
+    </key>
+    <key type="i" name="recently-used-max">
+      <default>10</default>
+      <range min='-1' max='100'/>
+      <summary>The maximum number of recently used menu entries to save per application</summary>
+      <description>
+        The maximum number of recently used menu entries to save per application
+
+        -1 is interpreted as unlimited entries.
+
+        0 is interpreted as don't show/save recently used items
+      </description>
+    </key>
     <key type="i" name="tap-timeout">
       <default>250</default>
       <summary>The timeout between key press and release to determine if the user meant to open MATE HUD</summary>
       <description>
         This only applies to single key shortcuts (e.g. `Alt_L`). It prevents the HUD from showing up if the user keeps the shortcut pressed for longer than the timeout.
         Set to 0 to disable the timeout.
+      </description>
+    </key>
+    <key type="i" name="transparency">
+      <default>100</default>
+      <range min='0' max='100'/>
+      <summary>The transparency of the HUD window background</summary>
+      <description>
+        The transparency of the HUD window background
+
+        0 completely transparent
+
+        100 solid color
       </description>
     </key>
   </schema>
