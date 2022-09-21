@@ -36,7 +36,16 @@ shortcut by default (can be changed in the settings GUI).
 ### Settings
 
 `mate-hud` includes a small GUI for configuring settings: `hud-settings.py`
-which should show up in your applications menu.
+which should show up in your applications menu. `mate-hud.py` reads two gsettings keys:
+
+  * `org.mate.hud`: `shortcut` (Default: `'Alt_L'`)
+  * `org.mate.hud`: `rofi-theme` (Default: `mate-hud`)
+
+`mate-hud.py` will not execute until those gsettings keys are created,
+which the `mate-hud` Debian package will do, and the `enabled` key
+is set to *True* using something like `dconf-editor`. 
+
+`mate-hud` can be enabled or disabled by MATE Tweak under `Panel > Panel Features > Enable HUD`.
 
 ### Themes
 
