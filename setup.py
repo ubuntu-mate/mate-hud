@@ -31,7 +31,7 @@ import DistUtilsExtra.command.clean_i18n
 import pkgconfig
 rofi_prefix = pkgconfig.variables('rofi').get('prefix')
 
-__VERSION__ = '22.04.4'
+__VERSION__ = '22.10.0'
 
 def datafilelist(installbase, sourcebase):
     datafileList = []
