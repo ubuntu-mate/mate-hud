@@ -5,5 +5,5 @@ Exec=/usr/lib/mate-hud/hud-settings.py
 Icon=mate-hud
 StartupNotify=false
 Terminal=false
-Categories=Settings;
+Categories=GTK;Settings;DesktopSettings;
 X-XfcePluggable=true
