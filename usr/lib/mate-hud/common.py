@@ -227,13 +227,14 @@ def get_theme_list(sort=False):
     theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
                    '/usr/share/rofi/themes/' ]
     for directory in theme_dirs:
-        for filename in os.listdir(directory):
-            f = os.path.join(directory, filename)
-            # checking if it is a file
-            if os.path.isfile(f) and filename[-5:] == '.rasi':
-                theme = filename[:-5]
-                if theme not in themes:
-                    themes.append( theme )
+        if os.path.isdir(directory):
+            for filename in os.listdir(directory):
+                f = os.path.join(directory, filename)
+                # checking if it is a file
+                if os.path.isfile(f) and filename[-5:] == '.rasi':
+                    theme = filename[:-5]
+                    if theme not in themes:
+                        themes.append( theme )
     if sort:
         themes.sort(key=sort_themes)
     return themes
