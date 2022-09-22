@@ -43,7 +43,7 @@ which should show up in your applications menu. `mate-hud.py` reads two gsetting
 
 `mate-hud.py` will not execute until those gsettings keys are created,
 which the `mate-hud` Debian package will do, and the `enabled` key
-is set to *True* using something like `dconf-editor`. 
+is set to *True* using something like `dconf-editor`.
 
 `mate-hud` can be enabled or disabled by MATE Tweak under `Panel > Panel Features > Enable HUD`.
 
@@ -78,7 +78,6 @@ export UBUNTU_MENUPROXY=1
   * `mate-desktop`
   * `python3`
   * `python3-dbus`
-  * `python3-pkgconfig`
   * `python3-pyinotify`
   * `python3-setproctitle`
   * `python3-xlib`

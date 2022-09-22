@@ -28,9 +28,6 @@ import DistUtilsExtra.command.build_extra
 import DistUtilsExtra.command.build_i18n
 import DistUtilsExtra.command.clean_i18n
 
-import pkgconfig
-rofi_prefix = pkgconfig.variables('rofi').get('prefix')
-
 __VERSION__ = '22.10.0'
 
 def datafilelist(installbase, sourcebase):
@@ -70,10 +67,10 @@ data_files = [
     ('{prefix}/share/icons/hicolor/64x64@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/64x64@2/apps/mate-hud.png']),
     ('{prefix}/share/icons/hicolor/128x128@2/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/128x128@2/apps/mate-hud.png']),
     ('{prefix}/share/icons/hicolor/scalable/apps'.format(prefix=sys.prefix), ['usr/share/icons/hicolor/scalable/apps/mate-hud.svg']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-hidpi.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
-    ('{prefix}/share/rofi/themes/'.format(prefix=rofi_prefix), ['usr/share/rofi/themes/mate-hud-rounded-hidpi.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-hidpi.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded.rasi']),
+    ('{prefix}/share/rofi/themes/'.format(prefix=sys.prefix), ['usr/share/rofi/themes/mate-hud-rounded-hidpi.rasi']),
 ]
 
 cmdclass = {
