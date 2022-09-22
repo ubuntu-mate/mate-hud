@@ -50,7 +50,6 @@ class Defaults(object):
         return [ u'\u25C2' + ' '*3 + u'\u25B8',  # "◂   ▸"
                  u'\u2190' + ' '*3 + u'\u2794',  # "←   ➔" # doesn't seem to be a left arrow to match the right, so close enough
                  u'\u2190' + ' '*3 + u'\u279C',  # "←   ➜" # doesn't seem to be a left arrow to match the right, so close enough
-                 u'\u2B9C' + ' '*3 + u'\u2B9E',  # "⮜   ⮞"
                  u'\u276E' + ' '*3 + u'\u276F',  # "❮   ❯"
                  u'\u00AB' + ' '*3 + u'\u00BB',  # "«   »"
                  u'\u2039' + ' '*3 + u'\u203A' ]  # "‹   ›"
