@@ -3,7 +3,6 @@
 import gi
 import logging
 import os
-import pkgconfig
 import re
 
 gi.require_version('Gtk', '3.0')
@@ -226,7 +225,7 @@ def get_theme_list(sort=False):
 
     themes = []
     theme_dirs = [ os.path.expanduser('~') + '/.local/share/rofi/themes/' ,
-                   pkgconfig.variables('rofi').get('prefix') + '/share/rofi/themes/' ]
+                   '/usr/share/rofi/themes/' ]
     for directory in theme_dirs:
         for filename in os.listdir(directory):
             f = os.path.join(directory, filename)

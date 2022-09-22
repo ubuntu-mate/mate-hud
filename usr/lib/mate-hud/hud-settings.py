@@ -3,7 +3,6 @@
 import gi
 import logging
 import os.path
-import pkgconfig
 import re
 import setproctitle
 

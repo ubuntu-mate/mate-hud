@@ -9,7 +9,6 @@ import dbus
 import json
 import logging
 import os
-import pkgconfig
 import psutil
 import pyinotify
 import re
@@ -311,7 +310,7 @@ def get_panel_margin():
         size = get_number('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'icon-size')
         theme = get_string('net.launchpad.plank.dock.settings', '/net/launchpad/plank/docks/' + dock + '/', 'theme')
         config = configparser.ConfigParser()
-        cfg_file = pkgconfig.variables('plank').get('prefix') + 'plank/themes/' + theme + '/dock.theme'
+        cfg_file = '/usr/share/plank/themes/' + theme + '/dock.theme'
         if os.path.isfile( cfg_file ):
             config.read( cfg_file )
         pad = 0
