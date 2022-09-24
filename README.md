@@ -92,4 +92,4 @@ A reference package for Debian/Ubuntu is available from:
 
 ## Compatibility
 
-Compatibility may depend on your environment's compatability with the [rofi](https://github.com/davatorium/rofi/) package, which means environments using Wayland (e.g. Ubuntu 21.04) may not work (see [related rofi issue](https://github.com/davatorium/rofi/issues/446)).
+Compatibility may depend on your environment's compatibility with the [rofi](https://github.com/davatorium/rofi/) package, which means environments using Wayland (e.g. Ubuntu 21.04) may not work (see [related rofi issue](https://github.com/davatorium/rofi/issues/446)).
